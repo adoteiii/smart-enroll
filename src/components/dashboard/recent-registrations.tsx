@@ -1,50 +1,38 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import dayjs from "dayjs";
 
-export function RecentRegistrations() {
-  const registrations = [
-    {
-      id: 1,
-      name: "Alex Johnson",
-      email: "alex.j@example.com",
-      workshop: "Advanced React Patterns",
-      date: "Mar 10, 2025",
-      status: "Confirmed",
-    },
-    {
-      id: 2,
-      name: "Samantha Lee",
-      email: "sam.lee@example.com",
-      workshop: "Data Science Fundamentals",
-      date: "Mar 9, 2025",
-      status: "Pending",
-    },
-    {
-      id: 3,
-      name: "Michael Chen",
-      email: "m.chen@example.com",
-      workshop: "UX Design Workshop",
-      date: "Mar 8, 2025",
-      status: "Confirmed",
-    },
-    {
-      id: 4,
-      name: "Emily Wilson",
-      email: "e.wilson@example.com",
-      workshop: "Cloud Computing Essentials",
-      date: "Mar 7, 2025",
-      status: "Confirmed",
-    },
-    {
-      id: 5,
-      name: "David Kim",
-      email: "d.kim@example.com",
-      workshop: "Advanced React Patterns",
-      date: "Mar 6, 2025",
-      status: "Confirmed",
-    },
-  ]
+interface RegistrationData {
+  id: string;
+  studentName: string;
+  studentAvatar: string | null;
+  workshopTitle: string;
+  date: string;
+  status?: string; // Optional since it might not be in your data
+}
+
+interface RecentRegistrationsProps {
+  registrations: RegistrationData[];
+}
+
+export function RecentRegistrations({
+  registrations = [],
+}: RecentRegistrationsProps) {
+  if (!registrations || registrations.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-48 border rounded-lg">
+        <p className="text-muted-foreground">No recent registrations found</p>
+      </div>
+    );
+  }
 
   return (
     <Table>
@@ -57,31 +45,55 @@ export function RecentRegistrations() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {registrations.map((registration) => (
-          <TableRow key={registration.id}>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={`/placeholder.svg?height=32&width=32`} alt={registration.name} />
-                  <AvatarFallback>{registration.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="font-medium">{registration.name}</span>
-                  <span className="text-xs text-muted-foreground">{registration.email}</span>
+        {registrations.map((registration) => {
+          // Format date for display
+          const formattedDate = dayjs(registration.date).format("MMM D, YYYY");
+
+          // Determine status if not provided
+          const status = registration.status || "Confirmed";
+
+          // Get initials for avatar fallback
+          const initials = registration.studentName
+            .split(" ")
+            .map((name) => name[0])
+            .join("")
+            .toUpperCase()
+            .substring(0, 2);
+
+          return (
+            <TableRow key={registration.id}>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={
+                        registration.studentAvatar ||
+                        `/placeholder.svg?height=32&width=32`
+                      }
+                      alt={registration.studentName}
+                    />
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-medium">
+                      {registration.studentName}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </TableCell>
-            <TableCell>{registration.workshop}</TableCell>
-            <TableCell>{registration.date}</TableCell>
-            <TableCell>
-              <Badge variant={registration.status === "Confirmed" ? "outline" : "secondary"}>
-                {registration.status}
-              </Badge>
-            </TableCell>
-          </TableRow>
-        ))}
+              </TableCell>
+              <TableCell>{registration.workshopTitle}</TableCell>
+              <TableCell>{formattedDate}</TableCell>
+              <TableCell>
+                <Badge
+                  variant={status === "Confirmed" ? "outline" : "secondary"}
+                >
+                  {status}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
-  )
+  );
 }
-

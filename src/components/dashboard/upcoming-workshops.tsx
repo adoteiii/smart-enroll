@@ -1,78 +1,91 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Calendar, Clock, Users } from "lucide-react"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar, Clock, Users } from "lucide-react";
+import { WorkshopComponentProps } from "@/lib/componentprops";
+import dayjs from "dayjs";
+import Link from "next/link";
 
-export function UpcomingWorkshops() {
-  const workshops = [
-    {
-      id: 1,
-      title: "Advanced React Patterns",
-      date: "Mar 15, 2025",
-      time: "10:00 AM - 2:00 PM",
-      attendees: 45,
-      capacity: 50,
-      status: "Open",
-    },
-    {
-      id: 2,
-      title: "Data Science Fundamentals",
-      date: "Mar 18, 2025",
-      time: "1:00 PM - 5:00 PM",
-      attendees: 32,
-      capacity: 40,
-      status: "Open",
-    },
-    {
-      id: 3,
-      title: "UX Design Workshop",
-      date: "Mar 22, 2025",
-      time: "9:00 AM - 12:00 PM",
-      attendees: 28,
-      capacity: 30,
-      status: "Almost Full",
-    },
-    {
-      id: 4,
-      title: "Cloud Computing Essentials",
-      date: "Mar 25, 2025",
-      time: "2:00 PM - 6:00 PM",
-      attendees: 15,
-      capacity: 35,
-      status: "Open",
-    },
-  ]
+interface UpcomingWorkshopsProps {
+  workshops: WorkshopComponentProps[];
+}
+
+export function UpcomingWorkshops({ workshops = [] }: UpcomingWorkshopsProps) {
+  // If no workshops are provided, return a message
+  if (!workshops || workshops.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-48 border rounded-lg">
+        <p className="text-muted-foreground">No upcoming workshops scheduled</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {workshops.map((workshop) => (
-        <div key={workshop.id} className="flex flex-col space-y-2 rounded-lg border p-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium">{workshop.title}</h3>
-            <Badge variant={workshop.status === "Almost Full" ? "destructive" : "outline"}>{workshop.status}</Badge>
-          </div>
-          <div className="flex flex-col space-y-1 text-sm text-muted-foreground">
-            <div className="flex items-center">
-              <Calendar className="mr-2 h-4 w-4" />
-              {workshop.date}
-            </div>
-            <div className="flex items-center">
-              <Clock className="mr-2 h-4 w-4" />
-              {workshop.time}
-            </div>
-            <div className="flex items-center">
-              <Users className="mr-2 h-4 w-4" />
-              {workshop.attendees}/{workshop.capacity} Registered
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm">
-              Details
-            </Button>
-            <Button size="sm">Manage</Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
+      {workshops.map((workshop) => {
+        // Calculate the status based on registration count and capacity
+        const registeredCount = workshop.registeredCount || 0;
+        const capacity = workshop.capacity || 0;
+        const percentFull =
+          capacity > 0 ? (registeredCount / capacity) * 100 : 0;
 
+        let status = "Open";
+        if (percentFull >= 90) status = "Almost Full";
+        if (percentFull >= 100) status = "Filled";
+
+        // Format date and time
+        const startDate = dayjs(workshop.startDate);
+        const endDate = dayjs(workshop.endDate);
+        const formattedDate = startDate.format("MMM D, YYYY");
+        const formattedTime = `${startDate.format("h:mm A")} - ${endDate.format(
+          "h:mm A"
+        )}`;
+
+        return (
+          <div
+            key={workshop.id}
+            className="flex flex-col space-y-2 rounded-lg border p-3"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium">{workshop.title}</h3>
+              <Badge
+                variant={
+                  status === "Almost Full"
+                    ? "secondary"
+                    : status === "Filled"
+                    ? "destructive"
+                    : "outline"
+                }
+              >
+                {status}
+              </Badge>
+            </div>
+            <div className="flex flex-col space-y-1 text-sm text-muted-foreground">
+              <div className="flex items-center">
+                <Calendar className="mr-2 h-4 w-4" />
+                {formattedDate}
+              </div>
+              <div className="flex items-center">
+                <Clock className="mr-2 h-4 w-4" />
+                {formattedTime}
+              </div>
+              <div className="flex items-center">
+                <Users className="mr-2 h-4 w-4" />
+                {registeredCount}/{capacity} Registered
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Link href={`/dashboard/workshops/${workshop.id}`}>
+                <Button variant="outline" size="sm">
+                  Details
+                </Button>
+              </Link>
+              <Link href={`/dashboard/workshops/manage/${workshop.id}`}>
+                <Button size="sm">Manage</Button>
+              </Link>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

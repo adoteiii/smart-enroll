@@ -4,9 +4,8 @@ import { cert } from "firebase-admin/app";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
-
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { DBUSER } from "../types";
+import { DBUSER, OrganizationSummary } from "../types";
 import { AccountVerifiedProps, OrganizationFormData } from "../componentprops";
 
 var credentials = {
@@ -37,10 +36,11 @@ if (!serverapps.length) {
 
 const db = getFirestore();
 
-
-
-export async function existsDocServer(collectionName: string, documentName: string){
-  return (await db.collection(collectionName).doc(documentName).get()).exists
+export async function existsDocServer(
+  collectionName: string,
+  documentName: string
+) {
+  return (await db.collection(collectionName).doc(documentName).get()).exists;
 }
 
 export async function createOrganization(formData: OrganizationFormData) {
@@ -56,10 +56,8 @@ export async function createOrganization(formData: OrganizationFormData) {
 
 export async function getOrganization(uid: string) {
   try {
-    console.log('org', uid)
-    const organizationRef = db
-      .collection("organization")
-      .doc(uid);
+    console.log("org", uid);
+    const organizationRef = db.collection("organization").doc(uid);
     const snapshot = await organizationRef.get();
     if (snapshot.exists) {
       return snapshot.data() as OrganizationFormData;
@@ -128,8 +126,25 @@ export async function getAccountVerification(uid: string) {
   }
 }
 
-
 export async function MakeAdmin(uid: string) {
   const userRef = db.collection("dbuser").doc(uid);
   await userRef.update({ role: "ADMIN" });
+}
+
+export async function initializeOrganizationSummary(
+  summaryName: string,
+  organizationID: string
+) {
+  await db
+    .collection(summaryName)
+    .doc(organizationID)
+    .set({
+      revenue: 0,
+      workshops: 0,
+      workshopSummary: {},
+      lastModified: FieldValue.serverTimestamp() as unknown as {
+        seconds: number;
+        nanoseconds: number;
+      },
+    } as OrganizationSummary);
 }

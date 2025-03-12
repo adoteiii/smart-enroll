@@ -4,6 +4,9 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthContext } from "@/lib/userContext";
 import { getAuthenticatedAppForUser } from "@/lib/firebase/firebaseserver";
+import Providers from "@/providers/allProviders";
+import { ReduxProvider } from "@/redux/provider";
+import PublicListener from "@/components/security/PublicListener";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -34,8 +37,13 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthContext initialUser={currentUser}>
-          {children}
-          <Toaster />
+          <Providers>
+            <ReduxProvider>
+              <PublicListener></PublicListener>
+              {children}
+              <Toaster />
+            </ReduxProvider>
+          </Providers>
         </AuthContext>
       </body>
     </html>

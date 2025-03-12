@@ -1,58 +1,369 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowUpRight, Calendar, ChevronUp, Clock, Users } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { DashboardChart } from "@/components/dashboard/dashboard-chart"
-import { UpcomingWorkshops } from "@/components/dashboard/upcoming-workshops"
-import { RecentRegistrations } from "@/components/dashboard/recent-registrations"
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useDispatch } from "react-redux";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowUpRight, Calendar, ChevronUp, Clock, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import DashboardChart from "@/components/dashboard/dashboard-chart";
+import { UpcomingWorkshops } from "@/components/dashboard/upcoming-workshops";
+import { RecentRegistrations } from "@/components/dashboard/recent-registrations";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAppSelector } from "@/redux/store";
+import dayjs from "dayjs";
 
 export default function DashboardPage() {
+  const dispatch = useDispatch();
+  const [loading, setLoading] = useState(true);
+
+  // Get data from Redux store
+  const adminWorkshop = useAppSelector(
+    (state) => state.AdminWorkshopReducer.value
+  );
+  const adminStudent = useAppSelector(
+    (state) => state.AdminStudentReducer.value
+  );
+  const organization = useAppSelector(
+    (state) => state.OrganizationReducer.value
+  );
+  const dbUser = useAppSelector((state) => state.DBUserReducer.value);
+
+  // Simulate loading state (remove this in production)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Calculate all dashboard statistics
+  const stats = useMemo(() => {
+    if (!adminWorkshop || !adminStudent) {
+      return {
+        totalRegistrations: 0,
+        activeWorkshops: {
+          count: 0,
+          startingSoon: 0,
+        },
+        upcomingWorkshops: 0,
+        averageAttendance: 0,
+        registrationTrend: 0,
+        nextEventDays: null,
+        popularWorkshops: [],
+        recentRegistrations: [],
+        registrationTrends: [],
+      };
+    }
+
+    const now = dayjs();
+    const lastMonth = now.subtract(1, "month");
+    const nextWeek = now.add(1, "week");
+
+    // Extract workshops
+    const workshops = Object.values(adminWorkshop || {});
+
+    // Total registrations
+    const allRegistrations = Object.values(adminStudent || {}).flatMap(
+      (student) =>
+        student.registrations ? Object.values(student.registrations) : []
+    );
+
+    // Current month registrations
+    const currentMonthRegistrations = allRegistrations.filter((reg) =>
+      dayjs(reg.registeredAt).isAfter(lastMonth)
+    );
+
+    // Previous month registrations
+    const prevMonthRegistrations = allRegistrations.filter(
+      (reg) =>
+        dayjs(reg.registeredAt).isBefore(now.startOf("month")) &&
+        dayjs(reg.registeredAt).isAfter(lastMonth.startOf("month"))
+    );
+
+    // Calculate registration trend percentage
+    const prevMonthCount = prevMonthRegistrations.length || 1; // Avoid division by zero
+    const currentMonthCount = currentMonthRegistrations.length;
+    const registrationTrend = Math.round(
+      ((currentMonthCount - prevMonthCount) / prevMonthCount) * 100
+    );
+
+    // Active workshops (ongoing and not yet completed)
+    const activeWorkshops = workshops.filter(
+      (workshop) =>
+        dayjs(workshop.startDate).isBefore(now) &&
+        dayjs(workshop.endDate).isAfter(now)
+    );
+
+    // Workshops starting this week
+    const workshopsStartingSoon = workshops.filter(
+      (workshop) =>
+        dayjs(workshop.startDate).isAfter(now) &&
+        dayjs(workshop.startDate).isBefore(nextWeek)
+    );
+
+    // Upcoming workshops (not yet started)
+    const upcomingWorkshops = workshops.filter((workshop) =>
+      dayjs(workshop.startDate).isAfter(now)
+    );
+
+    // Find days until next workshop
+    const nextEventDays =
+      upcomingWorkshops.length > 0
+        ? upcomingWorkshops
+            .map((w) => dayjs(w.startDate).diff(now, "day"))
+            .sort((a, b) => a - b)[0]
+        : null;
+
+    // Calculate average attendance rate
+    const completedWorkshops = workshops.filter(
+      (workshop) => workshop.attendance && dayjs(workshop.endDate).isBefore(now)
+    );
+
+    const averageAttendance =
+      completedWorkshops.length > 0
+        ? Math.round(
+            completedWorkshops.reduce((sum, workshop) => {
+              const attended = workshop.attendance?.attended || 0;
+              const total = workshop.attendance?.total || 1; // Avoid division by zero
+              return sum + (attended / total) * 100;
+            }, 0) / completedWorkshops.length
+          )
+        : 0;
+
+    // Calculate attendance trend
+    const recentCompletedWorkshops = completedWorkshops.filter((w) =>
+      dayjs(w.endDate).isAfter(lastMonth)
+    );
+
+    const olderCompletedWorkshops = completedWorkshops.filter(
+      (w) =>
+        dayjs(w.endDate).isBefore(lastMonth) &&
+        dayjs(w.endDate).isAfter(lastMonth.subtract(1, "month"))
+    );
+
+    const recentAttendance =
+      recentCompletedWorkshops.length > 0
+        ? recentCompletedWorkshops.reduce((sum, workshop) => {
+            const attended = workshop.attendance?.attended || 0;
+            const total = workshop.attendance?.total || 1;
+            return sum + (attended / total) * 100;
+          }, 0) / recentCompletedWorkshops.length
+        : 0;
+
+    const olderAttendance =
+      olderCompletedWorkshops.length > 0
+        ? olderCompletedWorkshops.reduce((sum, workshop) => {
+            const attended = workshop.attendance?.attended || 0;
+            const total = workshop.attendance?.total || 1;
+            return sum + (attended / total) * 100;
+          }, 0) / olderCompletedWorkshops.length
+        : 0;
+
+    const attendanceTrend =
+      olderAttendance > 0
+        ? Math.round(
+            ((recentAttendance - olderAttendance) / olderAttendance) * 100
+          )
+        : 0;
+
+    // Popular workshops by enrollment rate
+    const popularWorkshops = workshops
+      .map((workshop) => {
+        const capacity = workshop.capacity || 1;
+        const enrolled = workshop.registeredStudents?.length || 0;
+        const enrollmentRate = Math.round((enrolled / capacity) * 100);
+
+        return {
+          id: workshop.id,
+          title: workshop.title,
+          enrollmentRate: enrollmentRate > 100 ? 100 : enrollmentRate,
+        };
+      })
+      .sort((a, b) => b.enrollmentRate - a.enrollmentRate)
+      .slice(0, 5);
+
+    // Recent registrations
+    const recentRegistrations = allRegistrations
+      .sort(
+        (a, b) => dayjs(b.registeredAt).unix() - dayjs(a.registeredAt).unix()
+      )
+      .slice(0, 5)
+      .map((reg) => {
+        const student = Object.values(adminStudent).find(
+          (s) => s.id === reg.id
+        );
+        const workshop = workshops.find((w) => w.id === reg.workshopId);
+
+        return {
+          id: reg.id,
+          studentName: student?.name || "Unknown Student",
+          studentAvatar: student?.name || null,
+          workshopTitle: workshop?.title || "Unknown Workshop",
+          date: reg.registeredAt,
+        };
+      });
+
+    // Registration trends data for chart (last 30 days)
+    const last30Days = Array.from({ length: 30 }, (_, i) =>
+      now.subtract(i, "day").format("YYYY-MM-DD")
+    ).reverse();
+
+    const registrationsByDay = last30Days.map((date) => {
+      const count = allRegistrations.filter(
+        (reg) => dayjs(reg.registeredAt).format("YYYY-MM-DD") === date
+      ).length;
+
+      return {
+        date,
+        value: count,
+      };
+    });
+
+    return {
+      totalRegistrations: allRegistrations.length,
+      registrationTrend,
+      activeWorkshops: {
+        count: activeWorkshops.length,
+        startingSoon: workshopsStartingSoon.length,
+      },
+      upcomingEvents: {
+        count: upcomingWorkshops.length,
+        nextEventDays,
+      },
+      attendanceRate: {
+        average: averageAttendance,
+        trend: attendanceTrend,
+      },
+      popularWorkshops,
+      recentRegistrations,
+      registrationTrends: registrationsByDay,
+    };
+  }, [adminWorkshop, adminStudent]);
+
+  // Format registration trend text
+  const registrationTrendText =
+    stats.registrationTrend >= 0
+      ? `+${stats.registrationTrend}% from last month`
+      : `${stats.registrationTrend}% from last month`;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's an overview of your workshop management system.</p>
+        <p className="text-muted-foreground">
+          Welcome back! Here's an overview of your workshop management system.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Total Registrations Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Registrations</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Registrations
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,248</div>
-            <p className="text-xs text-muted-foreground">+12% from last month</p>
+            {loading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats.totalRegistrations}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {registrationTrendText}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
+
+        {/* Active Workshops Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Workshops</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Workshops
+            </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">2 starting this week</p>
+            {loading ? (
+              <Skeleton className="h-8 w-12" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats.activeWorkshops.count}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.activeWorkshops.startingSoon} starting this week
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
+
+        {/* Attendance Rate Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Attendance Rate</CardTitle>
-            <ChevronUp className="h-4 w-4 text-emerald-500" />
+            <CardTitle className="text-sm font-medium">
+              Avg. Attendance Rate
+            </CardTitle>
+            {(stats.attendanceRate?.trend ?? 0) > 0 ? (
+              <ChevronUp className="h-4 w-4 text-emerald-500" />
+            ) : (
+              <ChevronUp className="h-4 w-4 text-red-500 rotate-180" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">92.4%</div>
-            <p className="text-xs text-muted-foreground">+2.1% from previous workshops</p>
+            {loading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats.attendanceRate?.average ?? 0}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {(stats.attendanceRate?.trend ?? 0) >= 0 ? "+" : ""}
+                  {stats.attendanceRate?.trend ?? 0}% from previous workshops
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
+
+        {/* Upcoming Events Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Upcoming Events
+            </CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">Next event in 3 days</p>
+            {loading ? (
+              <Skeleton className="h-8 w-12" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats.upcomingEvents?.count ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Next event{" "}
+                  {stats.upcomingEvents?.nextEventDays !== null
+                    ? `in ${stats.upcomingEvents?.nextEventDays} days`
+                    : "not scheduled"}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -68,10 +379,18 @@ export default function DashboardPage() {
             <Card className="lg:col-span-4">
               <CardHeader>
                 <CardTitle>Registration Trends</CardTitle>
-                <CardDescription>Workshop registrations over the past 30 days</CardDescription>
+                <CardDescription>
+                  Workshop registrations over the past 30 days
+                </CardDescription>
               </CardHeader>
               <CardContent className="pl-2">
-                <DashboardChart />
+                {loading ? (
+                  <div className="h-[350px] flex items-center justify-center">
+                    <Skeleton className="h-[300px] w-full" />
+                  </div>
+                ) : (
+                  <DashboardChart data={stats.registrationTrends} />
+                )}
               </CardContent>
             </Card>
             <Card className="lg:col-span-3">
@@ -80,7 +399,23 @@ export default function DashboardPage() {
                 <CardDescription>Your next scheduled workshops</CardDescription>
               </CardHeader>
               <CardContent>
-                <UpcomingWorkshops />
+                {loading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <UpcomingWorkshops
+                    workshops={Object.values(adminWorkshop || {})
+                      .filter((w) => dayjs(w.startDate).isAfter(dayjs()))
+                      .sort(
+                        (a, b) =>
+                          dayjs(a.startDate).unix() - dayjs(b.startDate).unix()
+                      )
+                      .slice(0, 5)}
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -97,61 +432,60 @@ export default function DashboardPage() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <RecentRegistrations />
+                {loading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <RecentRegistrations
+                    registrations={stats.recentRegistrations}
+                  />
+                )}
               </CardContent>
             </Card>
             <Card className="lg:col-span-3">
               <CardHeader>
                 <CardTitle>Popular Workshops</CardTitle>
-                <CardDescription>Workshops with highest enrollment rates</CardDescription>
+                <CardDescription>
+                  Workshops with highest enrollment rates
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="w-full space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">Advanced React Patterns</div>
-                        <div className="text-sm text-muted-foreground">98%</div>
+                {loading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="space-y-2">
+                        <Skeleton className="h-5 w-full" />
+                        <Skeleton className="h-2 w-full" />
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                        <div className="h-full w-[98%] rounded-full bg-primary"></div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-full space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">Data Science Fundamentals</div>
-                        <div className="text-sm text-muted-foreground">89%</div>
+                ) : (
+                  <div className="space-y-4">
+                    {stats.popularWorkshops.map((workshop) => (
+                      <div key={workshop.id} className="flex items-center">
+                        <div className="w-full space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-medium">
+                              {workshop.title}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {workshop.enrollmentRate}%
+                            </div>
+                          </div>
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${workshop.enrollmentRate}%` }}
+                            ></div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                        <div className="h-full w-[89%] rounded-full bg-primary"></div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-full space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">UX Design Workshop</div>
-                        <div className="text-sm text-muted-foreground">82%</div>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                        <div className="h-full w-[82%] rounded-full bg-primary"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-full space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">Cloud Computing Essentials</div>
-                        <div className="text-sm text-muted-foreground">74%</div>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                        <div className="h-full w-[74%] rounded-full bg-primary"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -160,12 +494,15 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Advanced Analytics</CardTitle>
-              <CardDescription>Detailed insights into your workshop performance</CardDescription>
+              <CardDescription>
+                Detailed insights into your workshop performance
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Analytics content will be displayed here. This section would include more detailed charts, demographic
-                breakdowns, and conversion metrics.
+                Analytics content will be displayed here. This section would
+                include more detailed charts, demographic breakdowns, and
+                conversion metrics.
               </p>
             </CardContent>
           </Card>
@@ -174,18 +511,20 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Generated Reports</CardTitle>
-              <CardDescription>Download and view your workshop reports</CardDescription>
+              <CardDescription>
+                Download and view your workshop reports
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Reports content will be displayed here. This section would include downloadable reports, scheduled
-                report generation, and report templates.
+                Reports content will be displayed here. This section would
+                include downloadable reports, scheduled report generation, and
+                report templates.
               </p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
-
