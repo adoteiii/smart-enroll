@@ -7,17 +7,18 @@ import AdminDraftReducer from "./features/admin/draftSlice";
 import OrganizationReducer from "./features/admin/organizationSlice";
 import WithrawalMethodReducer from "./features/admin/withrawalmethodSlice";
 import AdminWorkshopReducer from "./features/admin/workshopSlice";
-import AdminStudentReducer from "./features/admin/studentSlice";
+import AdminStudentsReducer from "./features/admin/studentsSlice";
 import TeamReducer from "./features/admin/teamSlice";
 import TeamRequestReducer from "./features/admin/teamrequestSlice";
-import SpeakerReducer from "./features/admin/speakerSlice";
-import WithdrawalMethodReducer from './features/admin/withrawalmethodSlice'
-
+import AdminSpeakersReducer from "./features/admin/speakersSlice";
+import WithdrawalMethodReducer from "./features/admin/withrawalmethodSlice";
+import AdminRegistrationReducer from "./features/admin/registrationSlice";
 // All Access
-import StudentReducer from "./features/studentSlice";
-import WorkshopReducer from "./features/worksopSlice";
+import StudentReducer from "./features/studentsSlice";
+import WorkshopReducer from "./features/workshopSlice";
 import DBUserReducer from "./features/dbuserSlice";
 
+import AdminDraftsReducer from "./features/admin/draftsSlice"; // Add this
 
 export const store = configureStore({
   reducer: {
@@ -28,11 +29,13 @@ export const store = configureStore({
     TeamReducer,
     TeamRequestReducer,
     WithdrawalMethodReducer,
-    SpeakerReducer,
+    AdminSpeakersReducer,
     AdminWorkshopReducer,
-    AdminStudentReducer,
+    AdminStudentsReducer,
     StudentReducer,
     WorkshopReducer,
+    AdminDraftsReducer,
+    AdminRegistrationReducer,
   },
 });
 

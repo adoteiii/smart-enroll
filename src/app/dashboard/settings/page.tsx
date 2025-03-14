@@ -7,6 +7,7 @@ import { AppearanceSettings } from "../../../components/dashboard/appearance-set
 import { NotificationSettings } from "../../../components/dashboard/notification-settings";
 import { EmailTemplateSettings } from "../../../components/dashboard/email-template-settings";
 import { ApiSettings } from "../../../components/dashboard/api-settings";
+import { OrganizationSettings } from "@/components/dashboard/organization";
 
 export default function SettingsPage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -28,6 +29,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="email">Email Templates</TabsTrigger>
@@ -35,6 +37,9 @@ export default function SettingsPage() {
         </TabsList>
         <TabsContent value="general">
           <GeneralSettings />
+        </TabsContent>
+        <TabsContent value="organization">
+          <OrganizationSettings />
         </TabsContent>
         <TabsContent value="appearance">
           <AppearanceSettings

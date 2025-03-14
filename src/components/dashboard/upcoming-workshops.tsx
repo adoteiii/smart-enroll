@@ -74,14 +74,12 @@ export function UpcomingWorkshops({ workshops = [] }: UpcomingWorkshopsProps) {
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Link href={`/dashboard/workshops/${workshop.id}`}>
+              <Link href={`/dashboard/workshops/${workshop.docID}`}>
                 <Button variant="outline" size="sm">
                   Details
                 </Button>
               </Link>
-              <Link href={`/dashboard/workshops/manage/${workshop.id}`}>
-                <Button size="sm">Manage</Button>
-              </Link>
+              
             </div>
           </div>
         );

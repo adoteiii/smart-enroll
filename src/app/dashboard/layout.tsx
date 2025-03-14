@@ -19,13 +19,19 @@ import { Protected } from "@/components/security/Protected";
 import localforage from "localforage";
 import { useDispatch } from "react-redux";
 import { AppDispatch, useAppSelector } from "@/redux/store";
-import { OrganizationFormData, WorkshopComponentProps } from "@/lib/componentprops";
+import {
+  OrganizationFormData,
+  Speaker,
+  WorkshopComponentProps,
+} from "@/lib/componentprops";
 import { useLocalStorage } from "usehooks-ts";
 import { setAdminWorkshop } from "@/redux/features/admin/workshopSlice";
 import {
   and,
   collection,
   doc,
+  getDoc,
+  getDocs,
   limit,
   onSnapshot,
   or,
@@ -36,6 +42,8 @@ import dayjs from "dayjs";
 import { db } from "@/lib/firebase/firebase";
 import { setAdminDraft } from "@/redux/features/admin/draftSlice";
 import { setOrganization } from "@/redux/features/admin/organizationSlice";
+// Add this to your imports section
+import { setAdminSpeakers } from "@/redux/features/admin/speakersSlice"
 
 const Layout = ({ children }: { children: ReactNode }) => {
   const { user } = useContext(Context);
@@ -76,6 +84,40 @@ const Layout = ({ children }: { children: ReactNode }) => {
   }, [workshop, lastModifiedAdminWorkshop]);
 
   useEffect(() => {
+    async function fetchWorkshopData() {
+      if (!dbuser?.organizationid || !organization?.docID) {
+        return;
+      }
+
+      try {
+        // Fetch workshops for this organization
+        const workshopsQuery = query(
+          collection(db, "workshops"),
+          where("organization", "==", organization.docID)
+        );
+        const workshopsSnapshot = await getDocs(workshopsQuery);
+        const workshopsData = workshopsSnapshot.docs.map((doc) => ({
+          ...doc.data(),
+          docID: doc.id,
+        })) as WorkshopComponentProps[];
+
+        // Set workshops in Redux
+        dispatch(setAdminWorkshop(workshopsData));
+
+        // Fetch draft from the draft collection
+        const draftDoc = await getDoc(doc(db, "draft", dbuser.organizationid));
+        if (draftDoc.exists() && !draftDoc.data().deleted) {
+          const draftData = draftDoc.data() as WorkshopComponentProps;
+          dispatch(setAdminDraft(draftData));
+        }
+      } catch (error) {
+        console.error("Error fetching workshops data:", error);
+      }
+    }
+
+    fetchWorkshopData();
+  }, [dbuser, organization, dispatch]);
+  useEffect(() => {
     if (!dbuser?.organizationid) {
       return;
     }
@@ -111,7 +153,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
       .catch(() => {
         dispatch(setAdminWorkshop([]));
         store
-          .getItem("adminevent-lastmodified")
+          .getItem("adminworkshop-lastmodified")
           .then((lastmodified: any) => {
             setLastModifiedAdminWorkshop(lastmodified || 0);
             // setUpdatingAdminCompetition(false);
@@ -183,9 +225,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
           return;
         }
         setUpdatingAdminWorkshop(true);
-        store.getItem("adminworkshop").then((AdminEventStorage: any) => {
+        store.getItem("adminworkshop").then((AdminWorkshopStorage: any) => {
           let datamerged: WorkshopComponentProps[] = [];
-          AdminEventStorage?.forEach((d: WorkshopComponentProps) => {
+          AdminWorkshopStorage?.forEach((d: WorkshopComponentProps) => {
             datamerged.push(d);
           });
           let indexValue: any = {};
@@ -203,10 +245,10 @@ const Layout = ({ children }: { children: ReactNode }) => {
           store
             .setItem("adminworkshop", datamerged)
             .then(() => {
-              store.getItem("adminworkshop").then((adminevent: any) => {
+              store.getItem("adminworkshop").then((admineworkshop: any) => {
                 dispatch(
                   setAdminWorkshop(
-                    adminevent
+                    admineworkshop
                       ?.filter((i: any) => i.creator === dbuser?.organizationid)
                       ?.filter((i: any) => !i?.deleted)
                   )
@@ -237,7 +279,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
   }, [lastModifiedAdminWorkshop, dbuser, updatingAdminWorkshop, organization]);
 
   useEffect(() => {
-  
     if (draftStorage !== undefined) {
       // just get the last modified
       dispatch(setAdminDraft(draftStorage));
@@ -284,7 +325,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
             startDate: 0,
             endDate: 0,
             capacity: 0,
-            
+
             createdAt: "",
             updatedAt: "",
             isFree: true,
@@ -293,7 +334,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
               attended: 0,
               total: 0,
             },
-          
+
             deleted: false,
             organization: "",
             organization_name: "",
@@ -301,25 +342,32 @@ const Layout = ({ children }: { children: ReactNode }) => {
             organization_address: "",
             organization_phone: "",
             timestamp: 0,
-           
+
             lastModified: { seconds: 0, nanoseconds: 0 },
             location: "",
             workshopImage: [],
             registeredCount: 0,
             status: "upcoming",
             speaker: {
-              id: "",
+              docID: "",
               name: "",
               bio: "",
               email: "",
-              phone: "",
+              status: "active",
               profileImage: "",
-              socialLinks: {
-                twitter: "",
-                linkedin: "",
-                website: "",
-              }
-            }
+              createdAt: "",
+              organizationId: "",
+              
+            },
+            category: "",
+            level: "",
+            sendNotifications: false,
+            requireApproval: false,
+            enableWaitlist: false,
+            waitlistCount: 0,
+            waitlist: [],
+            registrationCloses: "",
+            additionalInformation: "",
           });
           return;
         }
@@ -340,10 +388,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
       },
       (e) => {
         console.log(e, "q not worked", e.message, "draft");
-        toast.error(
-          "You may not have permission",
-         
-        );
+        toast.error("You may not have permission");
       }
     );
     return unsubscribe;
@@ -391,6 +436,67 @@ const Layout = ({ children }: { children: ReactNode }) => {
     );
     return unsubscribe;
   }, [dbuser]);
+
+  const [updatingSpeakers, setUpdatingSpeakers] = useState(true);
+  const [lastModifiedSpeakers, setLastModifiedSpeakers] = useState<
+    number | undefined
+  >(undefined);
+
+    // Fetch speakers data
+  useEffect(() => {
+    if (!dbuser?.organizationid || !organization?.docID) {
+      return;
+    }
+  
+    try {
+      // Fetch speakers for this organization
+      const speakersQuery = query(
+        collection(db, "speakers"),
+        where("organizationId", "==", organization.docID)
+      );
+      
+      const unsubscribe = onSnapshot(speakersQuery, (snapshot) => {
+        const speakersData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            ...data,
+            docID: doc.id,
+            name: data.name || "",
+            email: data.email || "",
+            createdAt: data.createdAt || "",
+            status: data.status || "active",
+            organizationId: data.organizationId || "",
+            lastModifiedSpeakers: data.lastModified || undefined,
+          };
+        });
+        
+        // Store speakers in Redux and local storage
+        dispatch(setAdminSpeakers(speakersData as Speaker[]));
+        store.setItem("speakers", speakersData);
+        
+        // Update last modified timestamp
+        if (speakersData.length > 0) {
+          const latestModified = Math.max(
+            ...speakersData.map((speaker) => 
+              speaker.lastModifiedSpeakers ? 
+                speaker.lastModifiedSpeakers.seconds * 1000 + speaker.lastModifiedSpeakers.nanoseconds / 1000000 
+                : 0
+            )
+          );
+          setLastModifiedSpeakers(latestModified);
+          store.setItem("speakers-lastmodified", latestModified);
+        }
+        
+        setUpdatingSpeakers(false);
+      });
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error("Error fetching speakers data:", error);
+      setUpdatingSpeakers(false);
+    }
+  }, [dbuser, organization, dispatch]);
+
 
 
   useEffect(() => {

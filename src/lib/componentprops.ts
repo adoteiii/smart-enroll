@@ -30,8 +30,8 @@ export interface WorkshopComponentProps {
   capacity: number;
   workshopImage: Array<string>;
   registeredCount: number;
-  status: "upcoming" | "ongoing" | "completed" | "cancelled";
-  speaker?: SpeakerComponeentProps;
+  status: "upcoming" | "ongoing" | "completed" | "cancelled"| "draft";
+  speaker?: Speaker;
   createdAt: string;
   updatedAt: string;
   lastModified: { seconds: number; nanoseconds: number };
@@ -44,41 +44,77 @@ export interface WorkshopComponentProps {
   organization_photo?: string;
   organization_address: string;
   organization_phone: string;
-  registeredStudents: StudentComponentProps[];
+  registeredStudents: Student[];
   attendance: WorkshopAttendance;
+  category: string;
+  level: string;
+  sendNotifications: boolean;
+  requireApproval: boolean;
+  enableWaitlist: boolean;
+  waitlistCount: number;
+  waitlist: Registration[];
+  registrationCloses: string;
+  additionalInformation: string;
+  customRegistrationFields?: FormField[];
+  useDefaultRegistrationFields?: boolean;
 }
 
-export interface SpeakerComponeentProps {
-  id: string;
+export interface Speaker {
+  docID: string;
   name: string;
+  email: string;
+  expertise?: string;
   bio?: string;
-  email: string;
-  phone?: string;
   profileImage?: string;
-  socialLinks?: {
-    twitter?: string;
-    linkedin?: string;
-    website?: string;
-  };
+  organization?: string;
+  createdAt: string;
+  updatedAt?: string;
+  status: "active" | "pending" | "inactive";
+  workshops?: number; // Count of workshops
+  organizationId: string;
+  lastModified?: {
+    seconds: number;
+    nanoseconds: number;
+  }
 }
 
-export interface RegistrationComponentProps {
+export interface FormField {
   id: string;
-  student: StudentComponentProps;
-  workshopId: string;
-  status: "pending" | "confirmed" | "cancelled";
-  registeredAt: string;
-
+  type: FieldType;
+  label: string;
+  placeholder?: string;
+  required: boolean;
+  options?: FieldOption[]; // For select, checkbox, radio
+  description?: string;
+  defaultValue?: string;
+  
 }
 
-export interface StudentComponentProps {
-  id: string;
+export type FieldOption = 
+  | string 
+  | { value: string; label: string };
+
+
+
+export type FieldType =
+  | "text"
+  | "email"
+  | "phone"
+  | "number"
+  | "textarea"
+  | "select"
+  | "checkbox"
+  | "radio"
+  | "date";
+
+export interface Student {
+  docID: string;
   name: string;
   email: string;
-  phone?: string;
-  institution?: string;
-  registeredWorkshops: string[];
-  registrations: RegistrationComponentProps[];
+  profileImage?: string;
+  uid: string;
+  organization?: string;
+  createdAt: string;
 }
 
 export interface AdminUser {
@@ -109,7 +145,7 @@ export interface DashboardStats {
   totalRegistrations: number;
   totalWorkshops: number;
   upcomingWorkshops: number;
-  recentEnrollments: RegistrationComponentProps[];
+  recentEnrollments: Registration[];
 }
 
 export interface DashboardStats {
@@ -152,11 +188,26 @@ export interface WorkshopAttendance {
   total: number;
 }
 
-export interface RegistrationData {
-  id: string;
+export interface Registration {
+  docID: string;
   studentId: string;
   workshopId: string;
-  registrationDate: string;
-  // Add other properties as needed
+  status: "confirmed" | "pending" | "cancelled" | "waitlist";
+  registeredAt: string;
+  timestamp: number;
+  notes?: string;
+  waitlistPosition?: number;
+  student?: {
+    name: string;
+    email: string;
+    profileImage?: string;
+  };
+  workshop?: {
+    title: string;
+    startDate: string;
+    endDate: string;
+  };
+  updatedAt: string;
+  formData: FormData;
 }
 

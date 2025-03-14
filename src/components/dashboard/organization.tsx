@@ -22,7 +22,7 @@ import {
   updateBatch,
   commitBatch,
 } from "@/lib/firebase/firestore";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { OrganizationFormData } from "@/lib/componentprops";
 import { ImageUpload } from "./ImageUpload";
@@ -55,6 +55,32 @@ export function OrganizationSettings() {
   const [joinOrganization, setJoinOrganization] = useState("");
   const [joinOrganizationLoading, setJoinOrganizationLoading] = useState("");
   const [addOrganization, setAddOrganization] = useState(false);
+
+  useEffect(() => {
+    // If user exists but no dbuser record exists yet, create one as admin
+    if (user?.uid && dbuser === null) {
+      setDoc(
+        doc(db, "dbuser", user.uid),
+        {
+          uid: user.uid,
+          role: "ADMIN", // Set all users as admin by default
+          email: user.email,
+          createdAt: Date.now(),
+        },
+        { merge: true }
+      )
+        .then(() => {
+          console.log("Created default admin dbuser");
+        })
+        .catch((err) => {
+          console.error("Failed to create default admin dbuser:", err);
+        });
+    }
+  }, [user, dbuser]);
+
+  useEffect(() => {
+    console.log("Organization state:", organization);
+  }, [organization]);
 
   useEffect(() => {
     if (organization) {
@@ -109,13 +135,7 @@ export function OrganizationSettings() {
       return;
     }
 
-    const digitalAddressVerification = organizationAddress?.split("-");
-    if (
-      digitalAddressVerification.length !== 3 ||
-      digitalAddressVerification?.[0].length !== 2 ||
-      digitalAddressVerification?.[1].length !== 3 ||
-      digitalAddressVerification?.[2].length !== 4
-    ) {
+    if (organizationAddress.length < 6) {
       toast.error("Error", {
         description: "Enter a valid digital address",
       });
@@ -148,7 +168,7 @@ export function OrganizationSettings() {
         .commit()
         .then(() => {
           toast("Success", {
-            description: "Organization logo updated successfully",
+            description: "Organization details added successfully",
           });
           setLoading(false);
           setOrganizationAddress("");
@@ -223,9 +243,9 @@ export function OrganizationSettings() {
     }
   };
 
-//   if (organization === undefined) {
-//     return <Loader />;
-//   }
+  if (organization === undefined) {
+    return <Loader />;
+  }
 
   return (
     <div className="space-y-6">
@@ -291,7 +311,7 @@ export function OrganizationSettings() {
                             onChange={(e) =>
                               setOrganizationDescription(e.target.value)
                             }
-                            placeholder="Eg. Beauty pageant, NGO, University, Organization, Union"
+                            placeholder="Eg. Empowering Men and Women in Technology"
                           />
                         </div>
                         <div className="space-y-2">
@@ -331,7 +351,7 @@ export function OrganizationSettings() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="organization-logo">
-                            Organization Logo
+                            Organization Logo (Optional)
                           </Label>
                           <ImageUpload
                             relativePath={`${user?.uid}/organization/${v4()}`}

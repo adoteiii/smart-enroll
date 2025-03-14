@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 
 export function ApiSettings() {
   const [showApiKey, setShowApiKey] = useState(false)
-  const apiKey = "sk_live_51NzUBtKLj6IgYuGi3RvlwQnI9RzSBrDMX"
+  const apiKey = ""
 
   return (
     <Card>

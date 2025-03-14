@@ -18,18 +18,27 @@ import { RecentRegistrations } from "@/components/dashboard/recent-registrations
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppSelector } from "@/redux/store";
 import dayjs from "dayjs";
+import Link from "next/link";
+import { Registration } from "@/lib/componentprops";
+
 
 export default function DashboardPage() {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
 
   // Get data from Redux store
-  const adminWorkshop = useAppSelector(
+  const adminWorkshops = useAppSelector(
     (state) => state.AdminWorkshopReducer.value
-  );
-  const adminStudent = useAppSelector(
-    (state) => state.AdminStudentReducer.value
-  );
+  ) || [];
+  
+  const adminStudents = useAppSelector(
+    (state) => state.AdminStudentsReducer?.value
+  ) || [];
+  
+  const registrations = useAppSelector(
+    (state) => state.AdminRegistrationReducer?.value
+  ) || [];
+  
   const organization = useAppSelector(
     (state) => state.OrganizationReducer.value
   );
@@ -45,17 +54,22 @@ export default function DashboardPage() {
 
   // Calculate all dashboard statistics
   const stats = useMemo(() => {
-    if (!adminWorkshop || !adminStudent) {
+    if (!adminWorkshops || !registrations) {
       return {
         totalRegistrations: 0,
         activeWorkshops: {
           count: 0,
           startingSoon: 0,
         },
-        upcomingWorkshops: 0,
-        averageAttendance: 0,
+        upcomingEvents: {
+          count: 0,
+          nextEventDays: null,
+        },
+        attendanceRate: {
+          average: 0,
+          trend: 0,
+        },
         registrationTrend: 0,
-        nextEventDays: null,
         popularWorkshops: [],
         recentRegistrations: [],
         registrationTrends: [],
@@ -66,14 +80,8 @@ export default function DashboardPage() {
     const lastMonth = now.subtract(1, "month");
     const nextWeek = now.add(1, "week");
 
-    // Extract workshops
-    const workshops = Object.values(adminWorkshop || {});
-
-    // Total registrations
-    const allRegistrations = Object.values(adminStudent || {}).flatMap(
-      (student) =>
-        student.registrations ? Object.values(student.registrations) : []
-    );
+    // Extract registrations
+    const allRegistrations: Registration[] = registrations;
 
     // Current month registrations
     const currentMonthRegistrations = allRegistrations.filter((reg) =>
@@ -95,21 +103,21 @@ export default function DashboardPage() {
     );
 
     // Active workshops (ongoing and not yet completed)
-    const activeWorkshops = workshops.filter(
+    const activeWorkshops = adminWorkshops.filter(
       (workshop) =>
         dayjs(workshop.startDate).isBefore(now) &&
         dayjs(workshop.endDate).isAfter(now)
     );
 
     // Workshops starting this week
-    const workshopsStartingSoon = workshops.filter(
+    const workshopsStartingSoon = adminWorkshops.filter(
       (workshop) =>
         dayjs(workshop.startDate).isAfter(now) &&
         dayjs(workshop.startDate).isBefore(nextWeek)
     );
 
     // Upcoming workshops (not yet started)
-    const upcomingWorkshops = workshops.filter((workshop) =>
+    const upcomingWorkshops = adminWorkshops.filter((workshop) =>
       dayjs(workshop.startDate).isAfter(now)
     );
 
@@ -122,7 +130,7 @@ export default function DashboardPage() {
         : null;
 
     // Calculate average attendance rate
-    const completedWorkshops = workshops.filter(
+    const completedWorkshops = adminWorkshops.filter(
       (workshop) => workshop.attendance && dayjs(workshop.endDate).isBefore(now)
     );
 
@@ -174,15 +182,20 @@ export default function DashboardPage() {
         : 0;
 
     // Popular workshops by enrollment rate
-    const popularWorkshops = workshops
+    const popularWorkshops = adminWorkshops
       .map((workshop) => {
         const capacity = workshop.capacity || 1;
-        const enrolled = workshop.registeredStudents?.length || 0;
+        
+        // Count registrations for this workshop
+        const enrolled = registrations.filter(
+          r => r.workshopId === workshop.docID && r.status === "confirmed"
+        ).length;
+        
         const enrollmentRate = Math.round((enrolled / capacity) * 100);
 
         return {
-          id: workshop.id,
-          title: workshop.title,
+          id: workshop.docID,
+          title: workshop.title || "Untitled Workshop",
           enrollmentRate: enrollmentRate > 100 ? 100 : enrollmentRate,
         };
       })
@@ -196,15 +209,12 @@ export default function DashboardPage() {
       )
       .slice(0, 5)
       .map((reg) => {
-        const student = Object.values(adminStudent).find(
-          (s) => s.id === reg.id
-        );
-        const workshop = workshops.find((w) => w.id === reg.workshopId);
+        const workshop = adminWorkshops.find((w) => w.docID === reg.workshopId);
 
         return {
-          id: reg.id,
-          studentName: student?.name || "Unknown Student",
-          studentAvatar: student?.name || null,
+          id: reg.docID,
+          studentName: reg.student?.name || "Unknown Student",
+          studentAvatar: reg.student?.profileImage || null,
           workshopTitle: workshop?.title || "Unknown Workshop",
           date: reg.registeredAt,
         };
@@ -245,7 +255,7 @@ export default function DashboardPage() {
       recentRegistrations,
       registrationTrends: registrationsByDay,
     };
-  }, [adminWorkshop, adminStudent]);
+  }, [adminWorkshops, adminStudents, registrations]);
 
   // Format registration trend text
   const registrationTrendText =
@@ -344,7 +354,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Upcoming Events
+              Upcoming Workshops
             </CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -407,7 +417,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <UpcomingWorkshops
-                    workshops={Object.values(adminWorkshop || {})
+                    workshops={adminWorkshops
                       .filter((w) => dayjs(w.startDate).isAfter(dayjs()))
                       .sort(
                         (a, b) =>
@@ -426,9 +436,11 @@ export default function DashboardPage() {
                   <CardTitle>Recent Registrations</CardTitle>
                   <CardDescription>Latest student enrollments</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" className="ml-auto gap-1">
-                  <span>View All</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
+                <Button variant="outline" size="sm" className="ml-auto gap-1" asChild>
+                  <Link href="/dashboard/registrations">
+                    <span>View All</span>
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </Link>
                 </Button>
               </CardHeader>
               <CardContent>

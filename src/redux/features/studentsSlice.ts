@@ -1,8 +1,8 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { StudentComponentProps } from "@/lib/componentprops";
+import { Student } from "@/lib/componentprops";
 
 interface StudentState {
-  value: StudentComponentProps[] | undefined;
+  value: Student[] | undefined;
 }
 
 const initialState: StudentState = {
@@ -13,7 +13,7 @@ export const studentSlice = createSlice({
   name: 'student',
   initialState,
   reducers: {
-    setStudent: (state, action: PayloadAction<StudentComponentProps[] | undefined>) => {
+    setStudent: (state, action: PayloadAction<Student[] | undefined>) => {
       state.value = action.payload;
     },
   },

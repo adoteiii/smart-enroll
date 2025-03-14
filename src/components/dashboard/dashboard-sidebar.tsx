@@ -78,11 +78,11 @@ export default function AppSidebar() {
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                   <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild>
+                    {/* <SidebarMenuSubButton asChild>
                       <Link href="/dashboard/workshops/manage">
                         <span>Manage Workshops</span>
                       </Link>
-                    </SidebarMenuSubButton>
+                    </SidebarMenuSubButton> */}
                   </SidebarMenuSubItem>
                 </SidebarMenuSub>
               </SidebarMenuItem>
