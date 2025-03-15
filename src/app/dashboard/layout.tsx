@@ -87,7 +87,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
       query(
         collection(db, "messages"),
         where("uid", "==", dbuser.uid),
-        orderBy("timestamp", "desc")
+        orderBy("timestamp")
       ),
       (snapshot) => {
         const messages = snapshot.docs.map((doc) => doc.data() as Message);

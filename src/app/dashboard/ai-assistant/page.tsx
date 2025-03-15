@@ -37,13 +37,16 @@ export default function AIAssistantPage() {
     (state) => state.AdminRegistrationReducer.value
   );
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   const { sendMessage, isLoading, error } = useChat();
 
   // Set initial message on component mount
   useEffect(() => {
-    if (isFirstLoad) {
+    if (servermessages === undefined) {
+      // loading
+      return
+    }
+    if (!servermessages || servermessages.length === 0) {
       const initialMessage: Message = {
         role: "assistant",
         timestamp: dayjs().valueOf(),
@@ -52,22 +55,24 @@ export default function AIAssistantPage() {
           "Hello! I'm your AI workshop assistant. You can ask me questions about your workshops, registrations, or for insights about your data. How can I help you today?",
       };
 
-      setMessages([initialMessage]);
-      setIsFirstLoad(false);
+      // setMessages([initialMessage]);
+      // setIsFirstLoad(false);
 
       // Save the initial message if there are no server messages
       if (!servermessages || servermessages.length === 0) {
         writeToDoc("messages", v4(), initialMessage);
       }
-    }
-  }, [dbuser?.uid, isFirstLoad, servermessages]);
-
-  // Load messages from server
-  useEffect(() => {
-    if (servermessages && servermessages.length > 0) {
+    } else {
       setMessages(servermessages);
     }
-  }, [servermessages]);
+  }, [dbuser?.uid, servermessages]);
+
+  // Load messages from server
+  // useEffect(() => {
+  //   if (servermessages && servermessages.length > 0) {
+  //     setMessages(servermessages);
+  //   }
+  // }, [servermessages]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -133,7 +138,7 @@ export default function AIAssistantPage() {
     writeToDoc("messages", v4(), userMessage);
 
     // Update UI with user message
-    setMessages((prev) => [...prev, userMessage]);
+    // setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
     // Prepare context data
@@ -158,7 +163,7 @@ export default function AIAssistantPage() {
       writeToDoc("messages", v4(), assistantMessage);
 
       // Update UI with AI message
-      setMessages((prev) => [...prev, assistantMessage]);
+      // setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       console.error("Error in AI response:", err);
 
