@@ -32,8 +32,8 @@ export interface WorkshopComponentProps {
   registeredCount: number;
   status: "upcoming" | "ongoing" | "completed" | "cancelled"| "draft";
   speaker?: Speaker;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: number;
+  updatedAt: number;
   lastModified: { seconds: number; nanoseconds: number };
   timestamp: number; 
   deleted?: boolean;
@@ -114,7 +114,7 @@ export interface Student {
   profileImage?: string;
   uid: string;
   organization?: string;
-  createdAt: string;
+  createdAt: number;
 }
 
 export interface AdminUser {
@@ -193,7 +193,7 @@ export interface Registration {
   studentId: string;
   workshopId: string;
   status: "confirmed" | "pending" | "cancelled" | "waitlist";
-  registeredAt: string;
+  registeredAt: number;
   timestamp: number;
   notes?: string;
   waitlistPosition?: number;
@@ -204,8 +204,8 @@ export interface Registration {
   };
   workshop?: {
     title: string;
-    startDate: string;
-    endDate: string;
+    startDate: number;
+    endDate: number;
   };
   updatedAt: string;
   formData: FormData;

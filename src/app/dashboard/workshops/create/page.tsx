@@ -39,6 +39,7 @@ import { db } from "@/lib/firebase/firebase";
 import { addDraft, updateDraft } from "@/redux/features/admin/draftsSlice";
 import { setAdminWorkshop } from "@/redux/features/admin/workshopSlice";
 import StudentRegistration from "@/components/adminworkshop/StudentRegistration";
+import dayjs from "dayjs";
 
 function deepCleanUndefined(obj: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {};
@@ -113,9 +114,62 @@ export default function CreateWorkshopPage() {
           const draftData = draftDoc.data();
 
           if (!draftData.deleted) {
+            // Helper function to convert timestamps
+            const convertTimestamps = (obj: any): any => {
+              if (!obj) return obj;
+
+              if (Array.isArray(obj)) {
+                return [...obj].map((item) => convertTimestamps(item));
+              }
+
+              if (typeof obj === "object") {
+                // Check if it's a Firestore timestamp
+                if (
+                  obj?.seconds !== undefined &&
+                  obj?.nanoseconds !== undefined
+                ) {
+                  return obj.seconds * 1000 + obj.nanoseconds / 1000000;
+                }
+
+                // Process object properties
+                const result: Record<string, any> = {};
+                for (const key in obj) {
+                  if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    result[key] = convertTimestamps(obj[key]);
+                  }
+                }
+                return result;
+              }
+
+              return obj;
+            };
+
+            // Convert all timestamps in the document
+            const convertedData = convertTimestamps(draftData);
+
             const formattedDraftData = {
-              ...draftData,
+              ...convertedData,
               docID: draftId,
+              // Ensure these specific fields are numeric timestamps
+              createdAt:
+                typeof convertedData.createdAt === "number"
+                  ? convertedData.createdAt
+                  : dayjs(convertedData.createdAt).valueOf() || Date.now(),
+              updatedAt:
+                typeof convertedData.updatedAt === "number"
+                  ? convertedData.updatedAt
+                  : dayjs(convertedData.updatedAt).valueOf() || Date.now(),
+              timestamp:
+                typeof convertedData.timestamp === "number"
+                  ? convertedData.timestamp
+                  : dayjs(convertedData.timestamp).valueOf() || Date.now(),
+              lastModified:
+                typeof convertedData.lastModified === "number"
+                  ? convertedData.lastModified
+                  : convertedData.lastModified?.seconds
+                  ? convertedData.lastModified.seconds * 1000 +
+                    convertedData.lastModified.nanoseconds / 1000000
+                  : Date.now(),
             } as WorkshopComponentProps;
 
             // Set the workshop state with the loaded draft
@@ -151,6 +205,8 @@ export default function CreateWorkshopPage() {
         return {};
       }
 
+      const timestamp = Date.now();
+
       // Always start with a fresh workshop when creating new
       return {
         title: "",
@@ -180,6 +236,13 @@ export default function CreateWorkshopPage() {
         waitlist: [],
         useDefaultRegistrationFields: true,
         customRegistrationFields: [],
+        createdAt: timestamp, // Use numeric timestamp
+        updatedAt: timestamp, // Use numeric timestamp
+        timestamp: timestamp, // Use numeric timestamp
+        lastModified: {
+          seconds: Math.floor(timestamp / 1000),
+          nanoseconds: (timestamp % 1000) * 1000000,
+        }, // Create a timestamp object with seconds and nanoseconds
       };
     }
   );
@@ -250,18 +313,18 @@ export default function CreateWorkshopPage() {
         workshop as Record<string, any>
       );
 
-      // Prepare the workshop data
+      // Prepare the workshop data with consistent timestamp handling
       const workshopData = {
         ...cleanWorkshopData,
         status: "draft", // Draft status
-        createdAt: workshop.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        timestamp: timestamp,
+        createdAt: workshop.createdAt || timestamp, // Use timestamp if not exists
+        updatedAt: timestamp, // Always update this timestamp
+        timestamp: timestamp, // Consistent timestamp for all operations
         deleted: false,
         lastModified: {
           seconds: Math.floor(timestamp / 1000),
           nanoseconds: (timestamp % 1000) * 1000000,
-        },
+        }, // Create a timestamp object with seconds and nanoseconds
         customRegistrationFields:
           cleanWorkshopData.customRegistrationFields || [],
         useDefaultRegistrationFields:
@@ -294,9 +357,19 @@ export default function CreateWorkshopPage() {
 
       // Update Redux store - add or update this draft
       if (draftId) {
-        dispatch(updateDraft(workshopData as WorkshopComponentProps));
+        dispatch(
+          updateDraft({
+            ...workshopData,
+            docID: docId,
+          } as WorkshopComponentProps)
+        );
       } else {
-        dispatch(addDraft(workshopData as WorkshopComponentProps));
+        dispatch(
+          addDraft({
+            ...workshopData,
+            docID: docId,
+          } as WorkshopComponentProps)
+        );
       }
 
       toast.success("Workshop saved as draft");
@@ -337,18 +410,18 @@ export default function CreateWorkshopPage() {
         workshop as Record<string, any>
       );
 
-      // Add required timestamps and status
+      // Add required timestamps and status using numeric timestamps consistently
       const workshopData = {
         ...cleanWorkshopData,
         status: "upcoming", // Published status
-        createdAt: workshop.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        timestamp: timestamp,
+        createdAt: workshop.createdAt || timestamp, // Use existing or create new
+        updatedAt: timestamp, // Always update this timestamp
+        timestamp: timestamp, // Consistent timestamp for all operations
         deleted: false, // deleted flag
         lastModified: {
           seconds: Math.floor(timestamp / 1000),
           nanoseconds: (timestamp % 1000) * 1000000,
-        },
+        }, // Create a timestamp object with seconds and nanoseconds
         customRegistrationFields:
           cleanWorkshopData.customRegistrationFields || [],
         useDefaultRegistrationFields:

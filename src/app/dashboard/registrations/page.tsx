@@ -146,49 +146,99 @@ export default function RegistrationsPage() {
             } as Registration)
         );
 
-        // Get unique student IDs from the registrations
+        // Get unique student IDs from the registrations, filtering out guest/undefined IDs
         const studentIds = regs
           .map((reg) => reg.studentId)
+          .filter(
+            (id) => id !== undefined && id !== null && !id.startsWith("guest-")
+          )
           .filter((id, index, arr) => arr.indexOf(id) === index);
 
-        // Fetch all student data
-        const studentPromises = studentIds.map((studentId) =>
-          getDoc(doc(db, "students", studentId))
-        );
+        // Only fetch student data if there are valid student IDs
+        let studentsData: Student[] = [];
 
-        const studentDocs = await Promise.all(studentPromises);
-        const studentsData = studentDocs
-          .filter((doc) => doc.exists())
-          .map(
-            (doc) =>
-              ({
-                docID: doc.id,
-                ...doc.data(),
-              } as Student)
+        if (studentIds.length > 0) {
+          // Fetch all student data
+          const studentPromises = studentIds.map((studentId) =>
+            getDoc(doc(db, "students", studentId))
           );
 
-        // Store students in Redux
-        dispatch(setAdminStudents(studentsData));
+          const studentDocs = await Promise.all(studentPromises);
+          studentsData = studentDocs
+            .filter((doc) => doc.exists())
+            .map(
+              (doc) =>
+                ({
+                  docID: doc.id,
+                  ...doc.data(),
+                } as Student)
+            );
+
+          // Store students in Redux
+          dispatch(setAdminStudents(studentsData));
+        }
+
+        // Add a convertTimestamp helper
+        const convertTimestamp = (timestamp: any): number => {
+          if (!timestamp) return 0;
+
+          // Convert Firestore timestamp to milliseconds
+          if (
+            timestamp?.seconds !== undefined &&
+            timestamp?.nanoseconds !== undefined
+          ) {
+            return timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000;
+          }
+
+          // Convert string to number if it's a date string
+          if (typeof timestamp === 'string') {
+            const parsedDate = Date.parse(timestamp);
+            return isNaN(parsedDate) ? 0 : parsedDate;
+          }
+
+          // Return as number
+          return Number(timestamp) || 0;
+        };
 
         // Enrich registrations with student and workshop data
         const enrichedRegistrations = regs.map((reg) => {
-          const student = studentsData.find((s) => s.docID === reg.studentId);
+          // Handle both registered users and guest registrations
+          let studentInfo;
+
+          if (reg.studentId) {
+            // For registered users, look up their info from the students collection
+            const student = studentsData.find((s) => s.docID === reg.studentId);
+            if (student) {
+              studentInfo = {
+                name: student.name,
+                email: student.email,
+                profileImage: student.profileImage || undefined,
+              };
+            }
+          }
+
+          // If no student info found (or it's a guest), use the embedded student info
+          if (!studentInfo && reg.student) {
+            studentInfo = {
+              name: reg.student.name,
+              email: reg.student.email,
+              profileImage: reg.student.profileImage || undefined,
+            };
+          }
+
           const workshop = workshops.find((w) => w.docID === reg.workshopId);
 
+          // Convert any timestamps to serializable format
           return {
             ...reg,
-            student: student
-              ? {
-                  name: student.name,
-                  email: student.email,
-                  profileImage: student.profileImage,
-                }
-              : undefined,
+            registeredAt: reg.registeredAt,
+            timestamp: reg.timestamp,
+            student: studentInfo,
             workshop: workshop
               ? {
                   title: workshop.title,
-                  startDate: workshop.startDate,
-                  endDate: workshop.endDate,
+                  startDate: convertTimestamp(workshop.startDate),
+                  endDate: convertTimestamp(workshop.endDate),
                 }
               : undefined,
           };
@@ -404,9 +454,9 @@ export default function RegistrationsPage() {
                   reg.student?.email || "No email",
                   reg.workshop?.title || "Unknown workshop",
                   reg.workshop?.startDate
-                    ? formatDate(reg.workshop.startDate)
+                    ? reg.workshop.startDate
                     : "No date",
-                  reg.registeredAt ? formatDate(reg.registeredAt) : "Unknown",
+                  reg.registeredAt ? reg.registeredAt : "Unknown",
                   reg.status,
                 ].join(",")
               ),
@@ -492,14 +542,14 @@ export default function RegistrationsPage() {
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>
                           {registration.workshop?.startDate
-                            ? formatDate(registration.workshop.startDate)
+                            ? registration.workshop.startDate
                             : "No date"}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
                       {registration.registeredAt
-                        ? formatDate(registration.registeredAt)
+                        ? registration.registeredAt
                         : "Unknown"}
                     </TableCell>
                     <TableCell>
@@ -689,7 +739,7 @@ export default function RegistrationsPage() {
                     {selectedRegistration?.student?.email || "N/A"}
                   </p>
                 </div>
-                
+
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">
                     Registration Status

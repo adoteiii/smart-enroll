@@ -21,24 +21,44 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { Registration } from "@/lib/componentprops";
 
+// Add this helper function at the top of your component or outside
+const formatDate = (timestamp: any): string => {
+  if (!timestamp) return "";
+
+  // If it's already a number, use it directly with dayjs
+  if (typeof timestamp === "number") {
+    return dayjs(timestamp).format("MMM D, YYYY");
+  }
+
+  // If it's a string that can be parsed by dayjs
+  if (typeof timestamp === "string") {
+    return dayjs(timestamp).format("MMM D, YYYY");
+  }
+
+  // If it's a Firestore timestamp (should be handled before reaching here)
+  if (timestamp?.seconds !== undefined) {
+    const milliseconds =
+      timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000;
+    return dayjs(milliseconds).format("MMM D, YYYY");
+  }
+
+  return timestamp.toString();
+};
 
 export default function DashboardPage() {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
 
   // Get data from Redux store
-  const adminWorkshops = useAppSelector(
-    (state) => state.AdminWorkshopReducer.value
-  ) || [];
-  
-  const adminStudents = useAppSelector(
-    (state) => state.AdminStudentsReducer?.value
-  ) || [];
-  
-  const registrations = useAppSelector(
-    (state) => state.AdminRegistrationReducer?.value
-  ) || [];
-  
+  const adminWorkshops =
+    useAppSelector((state) => state.AdminWorkshopReducer.value) || [];
+
+  const adminStudents =
+    useAppSelector((state) => state.AdminStudentsReducer?.value) || [];
+
+  const registrations =
+    useAppSelector((state) => state.AdminRegistrationReducer?.value) || [];
+
   const organization = useAppSelector(
     (state) => state.OrganizationReducer.value
   );
@@ -185,12 +205,12 @@ export default function DashboardPage() {
     const popularWorkshops = adminWorkshops
       .map((workshop) => {
         const capacity = workshop.capacity || 1;
-        
+
         // Count registrations for this workshop
         const enrolled = registrations.filter(
-          r => r.workshopId === workshop.docID && r.status === "confirmed"
+          (r) => r.workshopId === workshop.docID && r.status === "confirmed"
         ).length;
-        
+
         const enrollmentRate = Math.round((enrolled / capacity) * 100);
 
         return {
@@ -203,10 +223,14 @@ export default function DashboardPage() {
       .slice(0, 5);
 
     // Recent registrations
-    const recentRegistrations = allRegistrations
-      .sort(
-        (a, b) => dayjs(b.registeredAt).unix() - dayjs(a.registeredAt).unix()
-      )
+
+    const recentRegistrations = [...allRegistrations] // Create a new array copy first
+      .sort((a, b) => {
+        // Safely handle the registered date comparison
+        const dateA = a.registeredAt ? dayjs(a.registeredAt).unix() : 0;
+        const dateB = b.registeredAt ? dayjs(b.registeredAt).unix() : 0;
+        return dateB - dateA;
+      })
       .slice(0, 5)
       .map((reg) => {
         const workshop = adminWorkshops.find((w) => w.docID === reg.workshopId);
@@ -216,7 +240,10 @@ export default function DashboardPage() {
           studentName: reg.student?.name || "Unknown Student",
           studentAvatar: reg.student?.profileImage || null,
           workshopTitle: workshop?.title || "Unknown Workshop",
-          date: reg.registeredAt,
+          date:
+            typeof reg.registeredAt === "number"
+              ? reg.registeredAt
+              : dayjs(reg.registeredAt).valueOf(),
         };
       });
 
@@ -226,9 +253,13 @@ export default function DashboardPage() {
     ).reverse();
 
     const registrationsByDay = last30Days.map((date) => {
-      const count = allRegistrations.filter(
-        (reg) => dayjs(reg.registeredAt).format("YYYY-MM-DD") === date
-      ).length;
+      const count = [...allRegistrations].filter((reg) => {
+        // Handle different timestamp formats
+        if (typeof reg.registeredAt === "number") {
+          return dayjs(reg.registeredAt).format("YYYY-MM-DD") === date;
+        }
+        return dayjs(reg.registeredAt).format("YYYY-MM-DD") === date;
+      }).length;
 
       return {
         date,
@@ -436,7 +467,12 @@ export default function DashboardPage() {
                   <CardTitle>Recent Registrations</CardTitle>
                   <CardDescription>Latest student enrollments</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" className="ml-auto gap-1" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto gap-1"
+                  asChild
+                >
                   <Link href="/dashboard/registrations">
                     <span>View All</span>
                     <ArrowUpRight className="h-3.5 w-3.5" />

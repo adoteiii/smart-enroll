@@ -84,13 +84,17 @@ const Layout = ({ children }: { children: ReactNode }) => {
       return;
     }
     const unsubscribe = onSnapshot(
-      query(collection(db, "messages"), where("uid", "==", dbuser.uid), orderBy('timestamp', 'desc')),
+      query(
+        collection(db, "messages"),
+        where("uid", "==", dbuser.uid),
+        orderBy("timestamp", "desc")
+      ),
       (snapshot) => {
         const messages = snapshot.docs.map((doc) => doc.data() as Message);
         dispatch(setMessages(messages));
       }
     );
-    return unsubscribe
+    return unsubscribe;
   }, [dbuser]);
 
   // listeners for snapshots
@@ -109,25 +113,60 @@ const Layout = ({ children }: { children: ReactNode }) => {
       where("organization", "==", organization.docID)
     );
     const unsubscribe = onSnapshot(workshopsQuery, (workshopsSnapshot) => {
-      const workshopsData = workshopsSnapshot.docs.map((doc) => ({
-        ...doc.data(),
-        docID: doc.id,
-        lastModified: {
-          seconds: doc.get("lastModified")?.seconds,
-          nanoseconds: doc.get("lastModified")?.nanoseconds,
-        },
-      })) as WorkshopComponentProps[]
+      const workshopsData = workshopsSnapshot.docs.map((doc) => {
+        const data = doc.data();
+
+        // Helper function to convert timestamps recursively
+        const convertTimestamps = (obj: any): any => {
+          if (!obj) return obj;
+
+          // Handle arrays
+          if (Array.isArray(obj)) {
+            return obj.map((item) => convertTimestamps(item));
+          }
+
+          // Handle objects
+          if (typeof obj === "object") {
+            // Check if it's a Firestore timestamp
+            if (obj?.seconds !== undefined && obj?.nanoseconds !== undefined) {
+              return obj.seconds * 1000 + obj.nanoseconds / 1000000;
+            }
+
+            // Recursively process object properties
+            const result: Record<string, any> = {};
+            for (const key in obj) {
+              result[key] = convertTimestamps(obj[key]);
+            }
+            return result;
+          }
+
+          return obj;
+        };
+
+        // Convert all timestamps in the document
+        const convertedData = convertTimestamps(data);
+
+        return {
+          ...convertedData,
+          docID: doc.id,
+          // Convert lastModified timestamp explicitly if it exists
+          lastModified: data.lastModified
+            ? data.lastModified.seconds * 1000 +
+              data.lastModified.nanoseconds / 1000000
+            : undefined,
+        };
+      }) as WorkshopComponentProps[];
+
       dispatch(setAdminWorkshop(workshopsData));
     });
     return unsubscribe;
-    
   }, [dbuser, organization]);
 
   useEffect(() => {
     if (!dbuser?.organizationid || !organization?.docID) {
       return;
     }
-    
+
     const draftQuery = doc(collection(db, "draft"), dbuser.organizationid);
     const unsubscribe = onSnapshot(draftQuery, (draftSnapshot) => {
       if (!draftSnapshot.exists()) {
@@ -141,8 +180,8 @@ const Layout = ({ children }: { children: ReactNode }) => {
           endDate: 0,
           capacity: 0,
 
-          createdAt: "",
-          updatedAt: "",
+          createdAt: 0,
+          updatedAt: 0,
           isFree: true,
           registeredStudents: [],
           attendance: {

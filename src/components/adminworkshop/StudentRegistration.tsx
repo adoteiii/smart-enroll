@@ -52,6 +52,7 @@ import {
   FieldOption,
 } from "@/lib/componentprops";
 import { toast } from "sonner";
+import { FormAssistant } from "@/components/ai/FormAssistant";
 
 interface StudentRegistrationProps {
   workshop: Partial<WorkshopComponentProps>;
@@ -230,7 +231,14 @@ const FieldEditor = ({
           <div className="space-y-2 mt-2">
             {(editedField.options || []).map((option, index) => (
               <div key={index} className="flex items-center gap-2">
-                <Input value={typeof option === 'string' ? option : option.label || option.value} readOnly />
+                <Input
+                  value={
+                    typeof option === "string"
+                      ? option
+                      : option.label || option.value
+                  }
+                  readOnly
+                />
                 <Button
                   size="icon"
                   variant="ghost"
@@ -447,6 +455,14 @@ export default function StudentRegistration({
     if (onContinue) onContinue();
   };
 
+  // Add suggested field
+  const addSuggestedField = (field: any) => {
+    // Add the field to the customRegistrationFields array
+    const updatedFields = [...customFields, field];
+    setCustomFields(updatedFields);
+    onChange("customRegistrationFields", updatedFields);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -559,6 +575,19 @@ export default function StudentRegistration({
               </Button>
             </div>
           )}
+
+          <FormAssistant
+            formFields={customFields}
+            onAddField={addSuggestedField} // Changed from handleAddField to addSuggestedField
+            workshopData={{
+              title: workshop.title,
+              description: workshop.description,
+              category: workshop.category,
+              level: workshop.level,
+              isFree: workshop.isFree,
+              capacity: workshop.capacity,
+            }}
+          />
         </div>
 
         {/* Preview section */}

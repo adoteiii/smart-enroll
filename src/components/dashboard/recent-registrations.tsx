@@ -15,7 +15,7 @@ interface RegistrationData {
   studentName: string;
   studentAvatar: string | null;
   workshopTitle: string;
-  date: string;
+  date: number;
   status?: string; // Optional since it might not be in your data
 }
 

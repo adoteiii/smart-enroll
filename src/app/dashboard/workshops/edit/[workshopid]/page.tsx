@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppSelector, useAppDispatch } from "@/redux/store";
 import { Speaker, WorkshopComponentProps } from "@/lib/componentprops";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -32,6 +32,38 @@ import {
 } from "@/components/adminworkshop";
 import Loader from "@/components/loader/Loader";
 import StudentRegistration from "@/components/adminworkshop/StudentRegistration";
+
+// Import dayjs if not already imported
+import dayjs from "dayjs";
+
+// 1. Add convertTimestamps helper function at the top level
+function convertTimestamps(obj: any): any {
+  if (!obj) return obj;
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return [...obj].map((item) => convertTimestamps(item));
+  }
+
+  // Handle objects
+  if (typeof obj === "object") {
+    // Check if it's a Firestore timestamp
+    if (obj?.seconds !== undefined && obj?.nanoseconds !== undefined) {
+      return obj.seconds * 1000 + obj.nanoseconds / 1000000;
+    }
+
+    // Recursively process object properties
+    const result: Record<string, any> = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        result[key] = convertTimestamps(obj[key]);
+      }
+    }
+    return result;
+  }
+
+  return obj;
+}
 
 export default function EditWorkshopPage() {
   const router = useRouter();
@@ -78,6 +110,7 @@ export default function EditWorkshopPage() {
         );
 
         if (storedWorkshop) {
+          // Redux state should already have converted timestamps
           setWorkshop(storedWorkshop);
           setIsLoading(false);
           return;
@@ -92,9 +125,12 @@ export default function EditWorkshopPage() {
           return;
         }
 
+        // Convert all timestamps in the document
+        const convertedData = convertTimestamps(workshopDoc.data());
+
         // Set workshop data
         setWorkshop({
-          ...workshopDoc.data(),
+          ...convertedData,
           docID: workshopId,
         } as WorkshopComponentProps);
       } catch (error) {
@@ -156,11 +192,12 @@ export default function EditWorkshopPage() {
 
     try {
       setIsSaving(true);
+      const timestamp = Date.now();
 
-      // Prepare updated workshop data
+      // Prepare updated workshop data with consistent timestamp handling
       const updatedWorkshop = {
         ...workshop,
-        updatedAt: new Date().toISOString(),
+        updatedAt: timestamp, // Use numeric timestamp instead of string
         lastModified: {
           seconds: Math.floor(Date.now() / 1000),
           nanoseconds: (Date.now() % 1000) * 1000000,
@@ -329,27 +366,12 @@ export default function EditWorkshopPage() {
                 <h3 className="font-medium">Date & Time</h3>
                 <p className="text-sm text-muted-foreground">
                   {workshop.startDate
-                    ? new Date(workshop.startDate).toLocaleDateString("en-US", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                    ? dayjs(workshop.startDate).format("dddd, MMMM D, YYYY")
                     : "No date set"}
                   {workshop.startDate && workshop.endDate
-                    ? `, ${new Date(workshop.startDate).toLocaleTimeString(
-                        "en-US",
-                        {
-                          hour: "numeric",
-                          minute: "numeric",
-                        }
-                      )} - ${new Date(workshop.endDate).toLocaleTimeString(
-                        "en-US",
-                        {
-                          hour: "numeric",
-                          minute: "numeric",
-                        }
-                      )}`
+                    ? `, ${dayjs(workshop.startDate).format(
+                        "h:mm A"
+                      )} - ${dayjs(workshop.endDate).format("h:mm A")}`
                     : ""}
                 </p>
               </div>

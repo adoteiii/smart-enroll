@@ -48,17 +48,13 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { v4 as uuidv4 } from "uuid";
+import { createRegistrationNotification } from "@/lib/firebase/notifications";
 
 interface RegistrationFormProps {
   workshop: WorkshopComponentProps;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (updatedWorkshop: WorkshopComponentProps) => void;
-  currentUser: {
-    uid: string;
-    email: string;
-    displayName?: string;
-  };
 }
 
 type FieldOption = string | { value: string; label: string };
@@ -68,7 +64,6 @@ export default function RegistrationForm({
   isOpen,
   onClose,
   onSuccess,
-  currentUser,
 }: RegistrationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationSchema, setValidationSchema] = useState<any>(z.object({}));
@@ -77,11 +72,9 @@ export default function RegistrationForm({
   useEffect(() => {
     let schemaObj: Record<string, any> = {};
 
-    // Always include default fields if useDefaultRegistrationFields is true
-    if (workshop.useDefaultRegistrationFields !== false) {
-      schemaObj.fullName = z.string().min(2, "Full name is required");
-      schemaObj.email = z.string().email("Invalid email address");
-    }
+    // Always include default fields for name and email regardless of settings
+    schemaObj.fullName = z.string().min(2, "Full name is required");
+    schemaObj.email = z.string().email("Invalid email address");
 
     // Add custom fields from workshop configuration
     if (workshop.customRegistrationFields?.length) {
@@ -152,25 +145,16 @@ export default function RegistrationForm({
       });
     }
 
-    // Always require terms agreement if it exists
-    // if (workshop.termsRequired) {
-    //   schemaObj.agreeToTerms = z.boolean().refine((val) => val === true, {
-    //     message: "You must agree to the terms and conditions",
-    //   });
-    // }
-
     setValidationSchema(z.object(schemaObj));
   }, [workshop]);
 
-  // Initialize form with default values
+  // Initialize form with empty values
   const form = useForm<Record<string, any>>({
     resolver: zodResolver(validationSchema),
     defaultValues: {
-      // Add default fields if configured to use them
-      ...(workshop.useDefaultRegistrationFields !== false && {
-        fullName: currentUser.displayName || "",
-        email: currentUser.email,
-      }),
+      // Default empty fields for name and email
+      fullName: "",
+      email: "",
       // Add custom fields with their default values
       ...(workshop.customRegistrationFields?.reduce((acc, field) => {
         if (field.id) {
@@ -187,8 +171,6 @@ export default function RegistrationForm({
         }
         return acc;
       }, {} as Record<string, any>) || {}),
-      // Add terms agreement checkbox if required
-      // ...(workshop.termsRequired && { agreeToTerms: false }),
     },
   });
 
@@ -200,22 +182,23 @@ export default function RegistrationForm({
       // Create a unique ID for this registration
       const registrationId = uuidv4();
 
+      // Generate a unique guest ID for this registration
+      const guestId = `guest-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 9)}`;
+
       // Basic registration data
       const registrationData = {
         docID: registrationId,
         workshopId: workshop.docID,
-        studentId: currentUser.uid,
         registeredAt: new Date().toISOString(),
         timestamp: Date.now(),
         status: workshop.requireApproval ? "pending" : "confirmed",
-        // Store the student's basic info
+        // Store the student's info directly from form data
         student: {
-          uid: currentUser.uid,
-          name:
-            workshop.useDefaultRegistrationFields !== false
-              ? data.fullName
-              : currentUser.displayName || "",
-          email: currentUser.email,
+          uid: guestId, // Use the generated guest ID
+          name: data.fullName,
+          email: data.email,
         },
         // Store all form responses
         formData: { ...data },
@@ -238,9 +221,8 @@ export default function RegistrationForm({
         await updateDoc(workshopRef, {
           waitlist: arrayUnion({
             docID: registrationId,
-            studentId: currentUser.uid,
-            name: data.fullName || currentUser.displayName || "",
-            email: currentUser.email,
+            name: data.fullName,
+            email: data.email,
             timestamp: new Date().toISOString(),
           }),
           waitlistCount: increment(1),
@@ -273,7 +255,13 @@ export default function RegistrationForm({
           : workshop.waitlistCount,
       };
 
-      // registration collection
+      // Create a registration notification
+      await createRegistrationNotification(
+        workshop.docID, // The admin who created the workshop
+        `${data.fullName}`, // Student name
+        workshop.docID, // Workshop ID
+        workshop.title // Workshop title
+      );
 
       onSuccess(updatedWorkshop);
       onClose();
@@ -632,8 +620,6 @@ export default function RegistrationForm({
                           placeholder="Your email address"
                           type="email"
                           {...field}
-                          readOnly
-                          className="bg-gray-50"
                         />
                       </FormControl>
                       <FormMessage />
@@ -667,35 +653,6 @@ export default function RegistrationForm({
 
             {/* Custom form fields */}
             {workshop.customRegistrationFields?.map(renderFormField)}
-
-            {/* Terms and conditions agreement if required */}
-            {/* {workshop.termsRequired && (
-              <FormField
-                control={form.control}
-                name="agreeToTerms"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 py-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        I agree to the workshop terms and conditions, and
-                        consent to the collection of my personal data for
-                        registration purposes.
-                      </FormLabel>
-                      {workshop.termsText && (
-                        <FormDescription>{workshop.termsText}</FormDescription>
-                      )}
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
-            )} */}
 
             <DialogFooter>
               <Button

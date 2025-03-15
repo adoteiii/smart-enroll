@@ -1,15 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useContext } from "react";
 import Link from "next/link";
-import { 
-  LogOut, 
-  Moon, 
-  Settings, 
-  Sun, 
-  Bell, 
-  HelpCircle, 
+import {
+  LogOut,
+  Moon,
+  Settings,
+  Sun,
+  Bell,
+  HelpCircle,
   Search,
-  Menu
+  Menu,
+  BuildingIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -30,20 +31,33 @@ import { Context } from "@/lib/userContext";
 import { Badge } from "@/components/ui/badge";
 import { signOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
+import {
+  getUnreadNotifications,
+  FirebaseNotification,
+} from "@/lib/firebase/notifications";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+// Initialize dayjs plugins
+dayjs.extend(relativeTime);
 
 interface DashboardNavbarProps {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 }
 
-const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ 
-  isDarkMode, 
-  toggleDarkMode 
+const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
+  isDarkMode,
+  toggleDarkMode,
 }) => {
   const { user } = useContext(Context);
   const router = useRouter();
   const [searchFocused, setSearchFocused] = useState(false);
-  
+  const [notifications, setNotifications] = useState<FirebaseNotification[]>(
+    []
+  );
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+
   // Get user initials for avatar fallback
   const getUserInitials = () => {
     if (!user || !user.displayName) return "U";
@@ -64,6 +78,29 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     }
   };
 
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user?.uid) return;
+
+      setIsLoadingNotifications(true);
+      try {
+        const unreadNotifications = await getUnreadNotifications(user.uid, 5);
+        setNotifications(unreadNotifications);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      } finally {
+        setIsLoadingNotifications(false);
+      }
+    };
+
+    fetchNotifications();
+
+    // Set up a polling mechanism to check for new notifications
+    const intervalId = setInterval(fetchNotifications, 60000); // Check every minute
+
+    return () => clearInterval(intervalId);
+  }, [user?.uid]);
+
   return (
     <header className="border-b bg-background sticky top-0 z-30">
       <div className="flex h-16 items-center px-4 gap-4">
@@ -73,11 +110,13 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
             <h1 className="font-semibold text-xl">Smart Enroll</h1>
           </Link>
         </div>
-        
-        <div 
+
+        <div
           className={cn(
             "flex items-center transition-all duration-200 rounded-md",
-            searchFocused ? "flex-1 md:flex-none md:w-[400px]" : "w-full md:w-[300px]"
+            searchFocused
+              ? "flex-1 md:flex-none md:w-[400px]"
+              : "w-full md:w-[300px]"
           )}
         >
           <div className="relative w-full">
@@ -91,59 +130,88 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
             />
           </div>
         </div>
-        
+
         <div className="ml-auto flex items-center gap-2">
           {/* Help Button */}
-          <Button variant="ghost" size="icon" className="hidden md:flex rounded-full">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden md:flex rounded-full"
+          >
             <HelpCircle className="h-5 w-5" />
           </Button>
-          
+
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full relative"
+              >
                 <Bell className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0">
-                  2
-                </Badge>
+                {notifications.length > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0">
+                    {notifications.length > 9 ? "9+" : notifications.length}
+                  </Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <DropdownMenuLabel className="flex justify-between items-center">
+                <span>Notifications</span>
+                {notifications.length > 0 && (
+                  <Badge variant="outline">{notifications.length} new</Badge>
+                )}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <div className="max-h-80 overflow-auto">
-                <DropdownMenuItem className="p-0">
-                  <div className="flex p-3 w-full cursor-pointer">
-                    <div className="w-full">
-                      <p className="font-medium text-sm">Workshop Registration Confirmed</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Your registration for "Advanced React" has been confirmed.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">2 hours ago</p>
-                    </div>
+                {isLoadingNotifications ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Loading notifications...
                   </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="p-0">
-                  <div className="flex p-3 w-full cursor-pointer bg-secondary">
-                    <div className="w-full">
-                      <p className="font-medium text-sm">New Workshop Added</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        "Introduction to AI" workshop is now available.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Yesterday</p>
-                    </div>
+                ) : notifications.length > 0 ? (
+                  notifications.map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className="p-0 focus:bg-transparent"
+                    >
+                      <Link
+                        href={notification.link || "/dashboard/notifications"}
+                        className="flex p-3 w-full hover:bg-muted/50 rounded-md"
+                      >
+                        <div className="w-full">
+                          <p className="font-medium text-sm">
+                            {notification.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {dayjs(notification.createdAt?.toDate()).fromNow()}
+                          </p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    No new notifications
                   </div>
-                </DropdownMenuItem>
+                )}
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="justify-center text-center">
-                <Link href="/dashboard/notifications" className="w-full text-center">
+                <Link
+                  href="/dashboard/notifications"
+                  className="w-full text-center"
+                >
                   View all notifications
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           {/* Theme Toggle */}
           <Button
             variant="ghost"
@@ -157,14 +225,11 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
               <Moon className="h-5 w-5" />
             )}
           </Button>
-          
+
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="relative h-8 w-8 rounded-full"
-              >
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage
                     src={user?.photoURL || ""}
@@ -174,21 +239,22 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-56"
-              align="end"
-              forceMount
-            >
+            <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user?.displayName || "User"}</p>
+                  <p className="text-sm font-medium">
+                    {user?.displayName || "User"}
+                  </p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem>
-                  <Link href="/dashboard/profile" className="flex items-center w-full">
+                  <Link
+                    href="/dashboard/profile"
+                    className="flex items-center w-full"
+                  >
                     <Avatar className="h-4 w-4 mr-2">
                       <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
@@ -196,7 +262,16 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Link href="/dashboard/settings" className="flex items-center w-full">
+                  <Link href="/workshops" className="flex items-center w-full">
+                    <BuildingIcon className="mr-2 h-4 w-4" />
+                    <span>Workshops</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Link
+                    href="/dashboard/settings"
+                    className="flex items-center w-full"
+                  >
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </Link>

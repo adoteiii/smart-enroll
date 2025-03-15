@@ -133,7 +133,6 @@ export default function WorkshopsPage() {
   }, [searchQuery, categoryFilter, levelFilter, statusFilter, reduxWorkshops]);
 
   const handleRegister = (workshop: WorkshopComponentProps) => {
-
     // Navigate to workshop details page with registration option
     router.push(`/workshops/${workshop.docID}`);
   };
@@ -377,16 +376,13 @@ export default function WorkshopsPage() {
                   className="w-full"
                   variant={isWorkshopFull(workshop) ? "outline" : "default"}
                   disabled={
-                    isWorkshopFull(workshop) ||
-                    isUserRegistered(workshop) ||
+                    (isWorkshopFull(workshop) && !workshop.enableWaitlist) ||
                     getTimestamp(workshop.endDate) < Date.now()
                   }
                   onClick={() => handleRegister(workshop)}
                 >
                   {getTimestamp(workshop.endDate) < Date.now()
                     ? "Workshop Ended"
-                    : isUserRegistered(workshop)
-                    ? "Already Registered"
                     : isWorkshopFull(workshop)
                     ? workshop.enableWaitlist
                       ? "Join Waitlist"

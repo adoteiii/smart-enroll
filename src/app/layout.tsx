@@ -7,6 +7,7 @@ import { getAuthenticatedAppForUser } from "@/lib/firebase/firebaseserver";
 import Providers from "@/providers/allProviders";
 import { ReduxProvider } from "@/redux/provider";
 import PublicListener from "@/components/security/PublicListener";
+import Navbar from "@/components/Navbar";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -40,6 +41,7 @@ export default async function RootLayout({
           <Providers>
             <ReduxProvider>
               <PublicListener></PublicListener>
+              <Navbar />
               {children}
               <Toaster />
             </ReduxProvider>
