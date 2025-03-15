@@ -90,19 +90,19 @@ export default function AIAssistantPage() {
 
   return (
     <div className="flex flex-col gap-6 max-w-[100vw] overflow-hidden">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">AI Assistant</h1>
+      <div className="flex flex-col gap-2 sr-only sm:not-sr-only">
+        <h1 className="text-3xl font-bold tracking-tight ">AI Assistant</h1>
         <p className="text-muted-foreground">Ask questions about your workshops and get AI-powered insights.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 w-full">
         <div className="md:col-span-2">
           <Card className="h-[calc(100vh-13rem)]">
-            <CardHeader>
+            <CardHeader className="">
               <CardTitle>Workshop Assistant</CardTitle>
               <CardDescription>Ask questions about your workshops, registrations, and more.</CardDescription>
             </CardHeader>
-            <CardContent className="h-[calc(75vh-9.5rem)] overflow-y-auto pb-0">
+            <CardContent className="h-[calc(65vh-9.5rem)] overflow-y-auto pb-0">
               <div className="space-y-4">
                 {messages.map((message, index) => (
                   <div

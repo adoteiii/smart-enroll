@@ -35,6 +35,7 @@ import {
   limit,
   onSnapshot,
   or,
+  orderBy,
   query,
   where,
 } from "firebase/firestore";
@@ -83,7 +84,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
       return;
     }
     const unsubscribe = onSnapshot(
-      query(collection(db, "messages"), where("uid", "==", dbuser.uid)),
+      query(collection(db, "messages"), where("uid", "==", dbuser.uid), orderBy('timestamp', 'desc')),
       (snapshot) => {
         const messages = snapshot.docs.map((doc) => doc.data() as Message);
         dispatch(setMessages(messages));
