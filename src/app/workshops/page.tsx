@@ -62,7 +62,7 @@ export default function WorkshopsPage() {
 
   // Set loading to false when Redux workshops are loaded
   useEffect(() => {
-    if (reduxWorkshops !== null) {
+    if (reduxWorkshops !== undefined) {
       setLoading(false);
     }
   }, [reduxWorkshops]);

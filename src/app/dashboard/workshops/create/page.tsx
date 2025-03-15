@@ -344,6 +344,7 @@ export default function CreateWorkshopPage() {
         createdAt: workshop.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         timestamp: timestamp,
+        deleted: false, // deleted flag
         lastModified: {
           seconds: Math.floor(timestamp / 1000),
           nanoseconds: (timestamp % 1000) * 1000000,
