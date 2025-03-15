@@ -273,6 +273,8 @@ export default function RegistrationForm({
           : workshop.waitlistCount,
       };
 
+      // registration collection
+
       onSuccess(updatedWorkshop);
       onClose();
     } catch (error) {
