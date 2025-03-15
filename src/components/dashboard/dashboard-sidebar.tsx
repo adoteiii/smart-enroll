@@ -1,3 +1,4 @@
+'use client'
 import Link from "next/link";
 import {
   BarChart3,
@@ -39,8 +40,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useContext } from "react";
+import { Context } from "@/lib/userContext";
 
 export default function AppSidebar() {
+  const {user} = useContext(Context)
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="flex items-center justify-between px-4 py-2">
@@ -135,15 +139,15 @@ export default function AppSidebar() {
           <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent p-3">
             <Avatar>
               <AvatarImage
-                src="/placeholder.svg?height=40&width=40"
+                src={user.photoURL||"/placeholder.svg?height=24&width=24"}
                 alt="Admin"
               />
               <AvatarFallback>AD</AvatarFallback>
             </Avatar>
             <div className="flex flex-col overflow-hidden">
-              <span className="truncate text-sm font-medium">Admin User</span>
+              <span className="truncate text-sm font-medium">{user.displayName||"Admin User"}</span>
               <span className="truncate text-xs text-muted-foreground">
-                admin@example.com
+                {user.email||""}
               </span>
             </div>
           </div>
