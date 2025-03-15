@@ -43,7 +43,9 @@ import { db } from "@/lib/firebase/firebase";
 import { setAdminDraft } from "@/redux/features/admin/draftSlice";
 import { setOrganization } from "@/redux/features/admin/organizationSlice";
 // Add this to your imports section
-import { setAdminSpeakers } from "@/redux/features/admin/speakersSlice"
+import { setAdminSpeakers } from "@/redux/features/admin/speakersSlice";
+import { Message } from "@/lib/types";
+import { setMessages } from "@/redux/features/messagesSlice";
 
 const Layout = ({ children }: { children: ReactNode }) => {
   const { user } = useContext(Context);
@@ -75,6 +77,20 @@ const Layout = ({ children }: { children: ReactNode }) => {
   const [draftStorage, setDraftStorage] = useLocalStorage<
     undefined | WorkshopComponentProps | null
   >("smart-enroll-draft", undefined);
+
+  useEffect(() => {
+    if (!dbuser?.organizationid || !dbuser?.uid) {
+      return;
+    }
+    const unsubscribe = onSnapshot(
+      query(collection(db, "messages"), where("uid", "==", dbuser.uid)),
+      (snapshot) => {
+        const messages = snapshot.docs.map((doc) => doc.data() as Message);
+        dispatch(setMessages(messages));
+      }
+    );
+    return unsubscribe
+  }, [dbuser]);
 
   // listeners for snapshots
   useEffect(() => {
@@ -357,7 +373,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
               profileImage: "",
               createdAt: "",
               organizationId: "",
-              
             },
             category: "",
             level: "",
@@ -442,19 +457,19 @@ const Layout = ({ children }: { children: ReactNode }) => {
     number | undefined
   >(undefined);
 
-    // Fetch speakers data
+  // Fetch speakers data
   useEffect(() => {
     if (!dbuser?.organizationid || !organization?.docID) {
       return;
     }
-  
+
     try {
       // Fetch speakers for this organization
       const speakersQuery = query(
         collection(db, "speakers"),
         where("organizationId", "==", organization.docID)
       );
-      
+
       const unsubscribe = onSnapshot(speakersQuery, (snapshot) => {
         const speakersData = snapshot.docs.map((doc) => {
           const data = doc.data();
@@ -469,35 +484,34 @@ const Layout = ({ children }: { children: ReactNode }) => {
             lastModifiedSpeakers: data.lastModified || undefined,
           };
         });
-        
+
         // Store speakers in Redux and local storage
         dispatch(setAdminSpeakers(speakersData as Speaker[]));
         store.setItem("speakers", speakersData);
-        
+
         // Update last modified timestamp
         if (speakersData.length > 0) {
           const latestModified = Math.max(
-            ...speakersData.map((speaker) => 
-              speaker.lastModifiedSpeakers ? 
-                speaker.lastModifiedSpeakers.seconds * 1000 + speaker.lastModifiedSpeakers.nanoseconds / 1000000 
+            ...speakersData.map((speaker) =>
+              speaker.lastModifiedSpeakers
+                ? speaker.lastModifiedSpeakers.seconds * 1000 +
+                  speaker.lastModifiedSpeakers.nanoseconds / 1000000
                 : 0
             )
           );
           setLastModifiedSpeakers(latestModified);
           store.setItem("speakers-lastmodified", latestModified);
         }
-        
+
         setUpdatingSpeakers(false);
       });
-      
+
       return unsubscribe;
     } catch (error) {
       console.error("Error fetching speakers data:", error);
       setUpdatingSpeakers(false);
     }
   }, [dbuser, organization, dispatch]);
-
-
 
   useEffect(() => {
     const savedDarkMode = localStorage.getItem("darkMode");

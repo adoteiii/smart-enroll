@@ -55,7 +55,7 @@ export async function uploadImage(
   const filePath = `images/${relativePath}`;
   const newImageRef = ref(storage, filePath);
   const uploadTask = uploadBytesResumable(newImageRef, image);
-
+  console.log('uploadTask', uploadTask)
   uploadTask.on(
 	  "state_changed", 
     (snapShot: UploadTaskSnapshot) => {

@@ -295,7 +295,7 @@ export function OrganizationSettings() {
                             value={organizationName}
                             onChange={(e) =>
                               setOrganizationName(
-                                e.target.value.replace(/[^a-zA-Z\s]/g, "")
+                                e.target.value.replace(/[^a-zA-Z0-9\s]/g, "")
                               )
                             }
                             placeholder="Enter organization name"

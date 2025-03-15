@@ -479,7 +479,7 @@ export default function CreateWorkshopPage() {
                   organization profile.
                 </p>
                 <Button asChild className="mt-2">
-                  <Link href="/dashboard/settings/organization">
+                  <Link href="/dashboard/settings?tab=organization">
                     Create Organization
                   </Link>
                 </Button>

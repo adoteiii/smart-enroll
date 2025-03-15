@@ -17,6 +17,7 @@ import AdminRegistrationReducer from "./features/admin/registrationSlice";
 import StudentReducer from "./features/studentsSlice";
 import WorkshopReducer from "./features/workshopSlice";
 import DBUserReducer from "./features/dbuserSlice";
+import MessagesReducer from "./features/messagesSlice";
 
 import AdminDraftsReducer from "./features/admin/draftsSlice"; // Add this
 
@@ -36,6 +37,7 @@ export const store = configureStore({
     WorkshopReducer,
     AdminDraftsReducer,
     AdminRegistrationReducer,
+    MessagesReducer
   },
 });
 

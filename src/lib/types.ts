@@ -20,3 +20,10 @@ export interface OrganizationSummary {
     nanoseconds: number;
   };
 }
+
+export interface Message {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
+  uid: string;
+}

@@ -7,6 +7,7 @@ import Image from "next/image";
 
 export const ImageUpload = ({ relativePath,  onUploadComplete, value}: { relativePath: string, onUploadComplete: (fp: string, url: string)=>void, value: string[] }) => {
   const [progress, setProgress] = useState<number>(0);
+  
   const [uploadError, setUploadError] = useState<string | null>(null);
 //   const [imageUrl, setImageUrl] = useState<string | null>(null);
   
