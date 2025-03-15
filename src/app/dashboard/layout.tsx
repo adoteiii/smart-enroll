@@ -100,199 +100,256 @@ const Layout = ({ children }: { children: ReactNode }) => {
   }, [workshop, lastModifiedAdminWorkshop]);
 
   useEffect(() => {
-    async function fetchWorkshopData() {
-      if (!dbuser?.organizationid || !organization?.docID) {
-        return;
-      }
-
-      try {
-        // Fetch workshops for this organization
-        const workshopsQuery = query(
-          collection(db, "workshops"),
-          where("organization", "==", organization.docID)
-        );
-        const workshopsSnapshot = await getDocs(workshopsQuery);
-        const workshopsData = workshopsSnapshot.docs.map((doc) => ({
-          ...doc.data(),
-          docID: doc.id,
-        })) as WorkshopComponentProps[];
-
-        // Set workshops in Redux
-        dispatch(setAdminWorkshop(workshopsData));
-
-        // Fetch draft from the draft collection
-        const draftDoc = await getDoc(doc(db, "draft", dbuser.organizationid));
-        if (draftDoc.exists() && !draftDoc.data().deleted) {
-          const draftData = draftDoc.data() as WorkshopComponentProps;
-          dispatch(setAdminDraft(draftData));
-        }
-      } catch (error) {
-        console.error("Error fetching workshops data:", error);
-      }
-    }
-
-    fetchWorkshopData();
-  }, [dbuser, organization, dispatch]);
-  useEffect(() => {
-    if (!dbuser?.organizationid) {
+    if (!dbuser?.organizationid || !organization?.docID) {
       return;
     }
-    if (organization?.docID !== dbuser.organizationid) {
-      return;
-    }
-    console.log("initial load... comp", lastModifiedAdminWorkshop);
-    store
-      .getItem("adminworksop")
-      .then((adminWorksopStorage: any) => {
-        console.log("stored already: ", adminWorksopStorage);
-        dispatch(
-          setAdminWorkshop(
-            adminWorksopStorage
-              ?.filter((i: any) => i.creator === dbuser?.organizationid)
-              ?.filter((i: any) => !i?.deleted) || []
-          )
-        );
-
-        store
-          .getItem("adminworkshop-lastmodified")
-          .then((lastmodified: any) => {
-            setLastModifiedAdminWorkshop(lastmodified || 0);
-
-            console.log("stored already ts: ", lastmodified);
-          })
-          .catch(() => {
-            // I rather the user restarts
-            setLastModifiedAdminWorkshop(0);
-            console.log("stored already ts: ", 0);
-          });
-      })
-      .catch(() => {
-        dispatch(setAdminWorkshop([]));
-        store
-          .getItem("adminworkshop-lastmodified")
-          .then((lastmodified: any) => {
-            setLastModifiedAdminWorkshop(lastmodified || 0);
-            // setUpdatingAdminCompetition(false);
-          })
-          .catch(() => {
-            // I rather the user restarts
-            setLastModifiedAdminWorkshop(0);
-          });
-      });
+    const workshopsQuery = query(
+      collection(db, "workshops"),
+      where("organization", "==", organization.docID)
+    );
+    const unsubscribe = onSnapshot(workshopsQuery, (workshopsSnapshot) => {
+      const workshopsData = workshopsSnapshot.docs.map((doc) => ({
+        ...doc.data(),
+        docID: doc.id,
+        lastModified: {
+          seconds: doc.get("lastModified")?.seconds,
+          nanoseconds: doc.get("lastModified")?.nanoseconds,
+        },
+      })) as WorkshopComponentProps[]
+      dispatch(setAdminWorkshop(workshopsData));
+    });
+    return unsubscribe;
+    
   }, [dbuser, organization]);
 
   useEffect(() => {
-    if (!dbuser?.organizationid) {
+    if (!dbuser?.organizationid || !organization?.docID) {
       return;
     }
-    if (organization?.docID !== dbuser.organizationid) {
-      // not registered / accepted
-      return;
-    }
-    if (updatingAdminWorkshop) {
-      // dont do anything while updating
-      // console.log("Busy with admin competitions");
-      return;
-    }
-    if (lastModifiedAdminWorkshop === undefined) {
-      return;
-    }
-    // console.log(lastModifiedAdminCompetitions, "last modified");
-    // console.log("beginning update competition", lastModifiedAdminCompetitions);
-    console.log(
-      "listener for event: ",
-      lastModifiedAdminWorkshop,
-      dbuser?.organizationid
-    );
-    const ref = collection(db, "workshops");
-    const ts = dayjs(lastModifiedAdminWorkshop || 0).toDate();
-    // console.log("listener ts", ts);
-    const q = query(
-      ref,
-      where("creator", "==", dbuser?.organizationid),
-      where("lastModified", ">", ts)
-    );
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        // store in local storage the last timestamp
-        // merge results
-        let data: WorkshopComponentProps[] = [];
-        console.log("snapshot event", snapshot.docs, ts);
-        snapshot.docs.forEach((doc) => {
-          data.push({
-            ...(doc.data() as WorkshopComponentProps),
-            docID: doc.id,
-            lastModified: {
-              seconds: doc.get("lastModified")?.seconds,
-              nanoseconds: doc.get("lastModified")?.nanoseconds,
-            },
-          });
-        });
-        // console.log(data, "snapshot data");
-        if (data === null || data === undefined) {
-          return;
-        }
-        data = data?.sort(
-          (a, b) => b.lastModified?.seconds - a.lastModified?.seconds
-        );
-        if (data && data.length > 0) {
-        } else {
-          return;
-        }
-        setUpdatingAdminWorkshop(true);
-        store.getItem("adminworkshop").then((AdminWorkshopStorage: any) => {
-          let datamerged: WorkshopComponentProps[] = [];
-          AdminWorkshopStorage?.forEach((d: WorkshopComponentProps) => {
-            datamerged.push(d);
-          });
-          let indexValue: any = {};
-          datamerged.forEach((d, idx) => {
-            indexValue[d.id] = idx;
-          });
-          data.forEach((result, idx) => {
-            if (indexValue[result.id] === undefined) {
-              datamerged.push(result);
-            } else {
-              datamerged[indexValue[result.id]] = result;
-            }
-          });
-          setLastModifiedAdminWorkshop(undefined);
-          store
-            .setItem("adminworkshop", datamerged)
-            .then(() => {
-              store.getItem("adminworkshop").then((admineworkshop: any) => {
-                dispatch(
-                  setAdminWorkshop(
-                    admineworkshop
-                      ?.filter((i: any) => i.creator === dbuser?.organizationid)
-                      ?.filter((i: any) => !i?.deleted)
-                  )
-                );
-              });
-              const ts = Math.floor(
-                data?.[0]?.lastModified.seconds * 1000 +
-                  data?.[0].lastModified.nanoseconds / 1000000
-              );
-              // console.log("ts", ts);
-              // console.log(dayjs(ts).toISOString());
-              store.setItem("adminworkshop-lastmodified", ts).then(() => {
-                setLastModifiedAdminWorkshop(ts);
-              });
-            })
-            .catch(() => setUpdatingAdminWorkshop(false));
-        });
+    
+    const draftQuery = doc(collection(db, "draft"), dbuser.organizationid);
+    const unsubscribe = onSnapshot(draftQuery, (draftSnapshot) => {
+      if (!draftSnapshot.exists()) {
+        setDraftStorage({
+          creator: dbuser?.organizationid as string,
+          id: dbuser?.organizationid as string,
+          docID: dbuser?.organizationid as string,
+          title: "",
+          description: "",
+          startDate: 0,
+          endDate: 0,
+          capacity: 0,
 
-        // setAdminCompetitionStorage(datamerged));
-      },
-      (e) => {
-        console.log(e, "q not worked", e.message, " Events");
+          createdAt: "",
+          updatedAt: "",
+          isFree: true,
+          registeredStudents: [],
+          attendance: {
+            attended: 0,
+            total: 0,
+          },
 
-        toast.error("You may not have permission");
+          deleted: false,
+          organization: "",
+          organization_name: "",
+          organization_photo: "",
+          organization_address: "",
+          organization_phone: "",
+          timestamp: 0,
+
+          lastModified: { seconds: 0, nanoseconds: 0 },
+          location: "",
+          workshopImage: [],
+          registeredCount: 0,
+          status: "upcoming",
+          speaker: {
+            docID: "",
+            name: "",
+            bio: "",
+            email: "",
+            status: "active",
+            profileImage: "",
+            createdAt: "",
+            organizationId: "",
+          },
+          category: "",
+          level: "",
+          sendNotifications: false,
+          requireApproval: false,
+          enableWaitlist: false,
+          waitlistCount: 0,
+          waitlist: [],
+          registrationCloses: "",
+          additionalInformation: "",
+        });
+        return;
       }
-    );
+      const draftData = draftSnapshot.data() as WorkshopComponentProps;
+      dispatch(setAdminDraft(draftData));
+    });
     return unsubscribe;
-  }, [lastModifiedAdminWorkshop, dbuser, updatingAdminWorkshop, organization]);
+  }, [dbuser, organization]);
+
+  // useEffect(() => {
+  //   if (!dbuser?.organizationid) {
+  //     return;
+  //   }
+  //   if (organization?.docID !== dbuser.organizationid) {
+  //     return;
+  //   }
+  //   console.log("initial load... comp", lastModifiedAdminWorkshop);
+  //   store
+  //     .getItem("adminworksop")
+  //     .then((adminWorksopStorage: any) => {
+  //       console.log("stored already: ", adminWorksopStorage);
+  //       dispatch(
+  //         setAdminWorkshop(
+  //           adminWorksopStorage
+  //             ?.filter((i: any) => i.creator === dbuser?.organizationid)
+  //             ?.filter((i: any) => !i?.deleted) || []
+  //         )
+  //       );
+
+  //       store
+  //         .getItem("adminworkshop-lastmodified")
+  //         .then((lastmodified: any) => {
+  //           setLastModifiedAdminWorkshop(lastmodified || 0);
+
+  //           console.log("stored already ts: ", lastmodified);
+  //         })
+  //         .catch(() => {
+  //           // I rather the user restarts
+  //           setLastModifiedAdminWorkshop(0);
+  //           console.log("stored already ts: ", 0);
+  //         });
+  //     })
+  //     .catch(() => {
+  //       dispatch(setAdminWorkshop([]));
+  //       store
+  //         .getItem("adminworkshop-lastmodified")
+  //         .then((lastmodified: any) => {
+  //           setLastModifiedAdminWorkshop(lastmodified || 0);
+  //           // setUpdatingAdminCompetition(false);
+  //         })
+  //         .catch(() => {
+  //           // I rather the user restarts
+  //           setLastModifiedAdminWorkshop(0);
+  //         });
+  //     });
+  // }, [dbuser, organization]);
+
+  // useEffect(() => {
+  //   if (!dbuser?.organizationid) {
+  //     return;
+  //   }
+  //   if (organization?.docID !== dbuser.organizationid) {
+  //     // not registered / accepted
+  //     return;
+  //   }
+  //   if (updatingAdminWorkshop) {
+  //     // dont do anything while updating
+  //     // console.log("Busy with admin competitions");
+  //     return;
+  //   }
+  //   if (lastModifiedAdminWorkshop === undefined) {
+  //     return;
+  //   }
+  //   // console.log(lastModifiedAdminCompetitions, "last modified");
+  //   // console.log("beginning update competition", lastModifiedAdminCompetitions);
+  //   console.log(
+  //     "listener for event: ",
+  //     lastModifiedAdminWorkshop,
+  //     dbuser?.organizationid
+  //   );
+  //   const ref = collection(db, "workshops");
+  //   const ts = dayjs(lastModifiedAdminWorkshop || 0).toDate();
+  //   // console.log("listener ts", ts);
+  //   const q = query(
+  //     ref,
+  //     where("creator", "==", dbuser?.organizationid),
+  //     where("lastModified", ">", ts)
+  //   );
+  //   const unsubscribe = onSnapshot(
+  //     q,
+  //     (snapshot) => {
+  //       // store in local storage the last timestamp
+  //       // merge results
+  //       let data: WorkshopComponentProps[] = [];
+  //       console.log("snapshot event", snapshot.docs, ts);
+  //       snapshot.docs.forEach((doc) => {
+  //         data.push({
+  //           ...(doc.data() as WorkshopComponentProps),
+  //           docID: doc.id,
+  //           lastModified: {
+  //             seconds: doc.get("lastModified")?.seconds,
+  //             nanoseconds: doc.get("lastModified")?.nanoseconds,
+  //           },
+  //         });
+  //       });
+  //       // console.log(data, "snapshot data");
+  //       if (data === null || data === undefined) {
+  //         return;
+  //       }
+  //       data = data?.sort(
+  //         (a, b) => b.lastModified?.seconds - a.lastModified?.seconds
+  //       );
+  //       if (data && data.length > 0) {
+  //       } else {
+  //         return;
+  //       }
+  //       setUpdatingAdminWorkshop(true);
+  //       store.getItem("adminworkshop").then((AdminWorkshopStorage: any) => {
+  //         let datamerged: WorkshopComponentProps[] = [];
+  //         AdminWorkshopStorage?.forEach((d: WorkshopComponentProps) => {
+  //           datamerged.push(d);
+  //         });
+  //         let indexValue: any = {};
+  //         datamerged.forEach((d, idx) => {
+  //           indexValue[d.id] = idx;
+  //         });
+  //         data.forEach((result, idx) => {
+  //           if (indexValue[result.id] === undefined) {
+  //             datamerged.push(result);
+  //           } else {
+  //             datamerged[indexValue[result.id]] = result;
+  //           }
+  //         });
+  //         setLastModifiedAdminWorkshop(undefined);
+  //         store
+  //           .setItem("adminworkshop", datamerged)
+  //           .then(() => {
+  //             store.getItem("adminworkshop").then((admineworkshop: any) => {
+  //               dispatch(
+  //                 setAdminWorkshop(
+  //                   admineworkshop
+  //                     ?.filter((i: any) => i.creator === dbuser?.organizationid)
+  //                     ?.filter((i: any) => !i?.deleted)
+  //                 )
+  //               );
+  //             });
+  //             const ts = Math.floor(
+  //               data?.[0]?.lastModified.seconds * 1000 +
+  //                 data?.[0].lastModified.nanoseconds / 1000000
+  //             );
+  //             // console.log("ts", ts);
+  //             // console.log(dayjs(ts).toISOString());
+  //             store.setItem("adminworkshop-lastmodified", ts).then(() => {
+  //               setLastModifiedAdminWorkshop(ts);
+  //             });
+  //           })
+  //           .catch(() => setUpdatingAdminWorkshop(false));
+  //       });
+
+  //       // setAdminCompetitionStorage(datamerged));
+  //     },
+  //     (e) => {
+  //       console.log(e, "q not worked", e.message, " Events");
+
+  //       toast.error("You may not have permission");
+  //     }
+  //   );
+  //   return unsubscribe;
+  // }, [lastModifiedAdminWorkshop, dbuser, updatingAdminWorkshop, organization]);
 
   useEffect(() => {
     if (draftStorage !== undefined) {
@@ -302,112 +359,112 @@ const Layout = ({ children }: { children: ReactNode }) => {
     }
   }, [dispatch, draftStorage]);
 
-  useEffect(() => {
-    if (!dbuser?.organizationid) {
-      // console.log("No uid");
-      return;
-    }
-    // console.log(lastModifiedDraft, "last modified");
-    if (organization?.docID !== dbuser.organizationid) {
-      return;
-    }
+  // useEffect(() => {
+  //   if (!dbuser?.organizationid) {
+  //     // console.log("No uid");
+  //     return;
+  //   }
+  //   // console.log(lastModifiedDraft, "last modified");
+  //   if (organization?.docID !== dbuser.organizationid) {
+  //     return;
+  //   }
 
-    if (dbuser?.role !== "ADMIN") {
-      dispatch(setAdminDraft(null));
-      return;
-    }
-    // console.log("listener", lastModifiedDraft);
-    const ref = collection(db, "draft");
-    const ts = lastModifiedDraft || 0;
-    // console.log("listener ts", ts);
-    const q = doc(ref, dbuser?.organizationid);
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        // store in local storage the last timestamp
-        // merge results
+  //   if (dbuser?.role !== "ADMIN") {
+  //     dispatch(setAdminDraft(null));
+  //     return;
+  //   }
+  //   // console.log("listener", lastModifiedDraft);
+  //   const ref = collection(db, "draft");
+  //   const ts = lastModifiedDraft || 0;
+  //   // console.log("listener ts", ts);
+  //   const q = doc(ref, dbuser?.organizationid);
+  //   const unsubscribe = onSnapshot(
+  //     q,
+  //     (snapshot) => {
+  //       // store in local storage the last timestamp
+  //       // merge results
 
-        if (!dbuser?.organizationid) {
-          return;
-        }
+  //       if (!dbuser?.organizationid) {
+  //         return;
+  //       }
 
-        if (!snapshot.exists()) {
-          setDraftStorage({
-            creator: dbuser?.organizationid as string,
-            id: dbuser?.organizationid as string,
-            docID: dbuser?.organizationid as string,
-            title: "",
-            description: "",
-            startDate: 0,
-            endDate: 0,
-            capacity: 0,
+  //       if (!snapshot.exists()) {
+  //         setDraftStorage({
+  //           creator: dbuser?.organizationid as string,
+  //           id: dbuser?.organizationid as string,
+  //           docID: dbuser?.organizationid as string,
+  //           title: "",
+  //           description: "",
+  //           startDate: 0,
+  //           endDate: 0,
+  //           capacity: 0,
 
-            createdAt: "",
-            updatedAt: "",
-            isFree: true,
-            registeredStudents: [],
-            attendance: {
-              attended: 0,
-              total: 0,
-            },
+  //           createdAt: "",
+  //           updatedAt: "",
+  //           isFree: true,
+  //           registeredStudents: [],
+  //           attendance: {
+  //             attended: 0,
+  //             total: 0,
+  //           },
 
-            deleted: false,
-            organization: "",
-            organization_name: "",
-            organization_photo: "",
-            organization_address: "",
-            organization_phone: "",
-            timestamp: 0,
+  //           deleted: false,
+  //           organization: "",
+  //           organization_name: "",
+  //           organization_photo: "",
+  //           organization_address: "",
+  //           organization_phone: "",
+  //           timestamp: 0,
 
-            lastModified: { seconds: 0, nanoseconds: 0 },
-            location: "",
-            workshopImage: [],
-            registeredCount: 0,
-            status: "upcoming",
-            speaker: {
-              docID: "",
-              name: "",
-              bio: "",
-              email: "",
-              status: "active",
-              profileImage: "",
-              createdAt: "",
-              organizationId: "",
-            },
-            category: "",
-            level: "",
-            sendNotifications: false,
-            requireApproval: false,
-            enableWaitlist: false,
-            waitlistCount: 0,
-            waitlist: [],
-            registrationCloses: "",
-            additionalInformation: "",
-          });
-          return;
-        }
-        let data = { ...snapshot.data() } as WorkshopComponentProps;
-        // console.log(data, "snapshot data");
-        if (data === null || data === undefined) {
-          return;
-        }
-        // console.log("d", data, "query worked draft");
+  //           lastModified: { seconds: 0, nanoseconds: 0 },
+  //           location: "",
+  //           workshopImage: [],
+  //           registeredCount: 0,
+  //           status: "upcoming",
+  //           speaker: {
+  //             docID: "",
+  //             name: "",
+  //             bio: "",
+  //             email: "",
+  //             status: "active",
+  //             profileImage: "",
+  //             createdAt: "",
+  //             organizationId: "",
+  //           },
+  //           category: "",
+  //           level: "",
+  //           sendNotifications: false,
+  //           requireApproval: false,
+  //           enableWaitlist: false,
+  //           waitlistCount: 0,
+  //           waitlist: [],
+  //           registrationCloses: "",
+  //           additionalInformation: "",
+  //         });
+  //         return;
+  //       }
+  //       let data = { ...snapshot.data() } as WorkshopComponentProps;
+  //       // console.log(data, "snapshot data");
+  //       if (data === null || data === undefined) {
+  //         return;
+  //       }
+  //       // console.log("d", data, "query worked draft");
 
-        const ts = data?.timestamp;
-        // console.log("ts", ts);
-        // console.log(dayjs(ts).toISOString());
-        setLastModifiedDraft(ts);
+  //       const ts = data?.timestamp;
+  //       // console.log("ts", ts);
+  //       // console.log(dayjs(ts).toISOString());
+  //       setLastModifiedDraft(ts);
 
-        // no merging required, just replacement on timestamp change. This will only cost one read per change. It would not use the cache.
-        setDraftStorage(data);
-      },
-      (e) => {
-        console.log(e, "q not worked", e.message, "draft");
-        toast.error("You may not have permission");
-      }
-    );
-    return unsubscribe;
-  }, [dbuser, organization]);
+  //       // no merging required, just replacement on timestamp change. This will only cost one read per change. It would not use the cache.
+  //       setDraftStorage(data);
+  //     },
+  //     (e) => {
+  //       console.log(e, "q not worked", e.message, "draft");
+  //       toast.error("You may not have permission");
+  //     }
+  //   );
+  //   return unsubscribe;
+  // }, [dbuser, organization]);
 
   useEffect(() => {
     if (!dbuser) {
