@@ -48,13 +48,13 @@ export default function HeroSection() {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/signup">
-                <Button size="sm" className="group">
+                <Button size="lg" className="group rounded-full">
                   Get Started
-                  <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1 " />
                 </Button>
               </Link>
               <Link href="/workshops">
-                <Button size="sm" variant="outline">
+                <Button size="lg" variant="outline" className="se rounded-full">
                   View Workshops
                 </Button>
               </Link>

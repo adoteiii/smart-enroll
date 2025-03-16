@@ -18,6 +18,7 @@ import dayjs from "dayjs";
 import { FirebaseNotification } from "../componentprops";
 import { v4 } from "uuid";
 import { sendMail, sendMailViaUID } from "../communication/email";
+import { sendSMS } from "../communication/sms";
 
 // Notification types
 export const NOTIFICATION_TYPES = {
@@ -101,7 +102,20 @@ export const createRegistrationNotification = async (
   workshopId: string,
   workshopTitle: string,
   organizationid: string,
-  attendee: { name: string; uid: string; email: string },
+  attendee: { name: string; uid: string; email: string; phone?: string },
+  workshopDetails: {
+    startDate: string | Date;
+    endDate?: string | Date;
+    location?: string;
+    description?: string;
+    instructorName?: string;
+    virtualMeetingLink?: string;
+    requirements?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    level?: string;
+    category?: string;
+  },
   batch?: WriteBatch
 ) => {
   const notification = createNotification(
@@ -118,7 +132,109 @@ export const createRegistrationNotification = async (
     },
     batch
   );
-  // send sms and email. Do not await the email sending.
+
+  const startDate =
+    typeof workshopDetails.startDate === "string"
+      ? new Date(workshopDetails.startDate)
+      : workshopDetails.startDate;
+
+  const endDate = workshopDetails.endDate
+    ? typeof workshopDetails.endDate === "string"
+      ? new Date(workshopDetails.endDate)
+      : workshopDetails.endDate
+    : null;
+
+  const formattedStartDate =
+    startDate instanceof Date
+      ? startDate.toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "Date not available";
+
+  const formattedStartTime =
+    startDate instanceof Date
+      ? startDate.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
+      : "";
+
+  const formattedEndDate =
+    endDate instanceof Date
+      ? endDate.toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "";
+
+  const formattedEndTime =
+    endDate instanceof Date
+      ? endDate.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
+      : "";
+
+  // Shorter date format for SMS
+  const shortDate =
+    startDate instanceof Date
+      ? startDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "Date not available";
+
+  const shortTime =
+    startDate instanceof Date
+      ? startDate.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
+      : "";
+
+  // Send SMS if phone number is available
+  if (attendee.phone) {
+    try {
+      // Create a concise SMS message with essential details
+      let smsMessage = `✅ Registration confirmed for: "${workshopTitle}"\n`;
+      smsMessage += `📅 ${shortDate} at ${shortTime}\n`;
+
+      if (workshopDetails.location) {
+        smsMessage += `📍 ${workshopDetails.location}\n`;
+      }
+
+      if (workshopDetails.instructorName) {
+        smsMessage += `👨‍🏫 Instructor: ${workshopDetails.instructorName}\n`;
+      }
+
+      if (workshopDetails.virtualMeetingLink) {
+        smsMessage += `🔗 Join online: ${workshopDetails.virtualMeetingLink}\n`;
+      }
+
+      smsMessage += `\nCheck your email for complete details.\n`;
+
+      if (workshopDetails.contactPhone) {
+        smsMessage += `Questions? Call ${workshopDetails.contactPhone}`;
+      }
+
+      // Send the SMS asynchronously
+      sendSMS(attendee.phone, smsMessage);
+    } catch (error) {
+      console.error("Error sending registration SMS:", error);
+      // Continue with email even if SMS fails
+    }
+  }
+
+  // send email (unchanged)
   sendMail(
     attendee.email,
     `Registration Confirmation: ${workshopTitle}`,
@@ -126,18 +242,144 @@ export const createRegistrationNotification = async (
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #333;">Workshop Registration Confirmation</h2>
         <p style="color: #666;">Dear ${attendee.name},</p>
-        <p style="color: #666;">You have successfully registered for the workshop:</p>
-        <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-radius: 5px;">
-          <h3 style="color: #333; margin: 0;">${workshopTitle}</h3>
+        <p style="color: #666;">You have successfully registered for the following workshop:</p>
+        
+        <div style="background-color: #f5f5f5; padding: 20px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #4CAF50;">
+          <h3 style="color: #333; margin: 0 0 10px 0;">${workshopTitle}</h3>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold; width: 120px;">Date:</td>
+              <td style="padding: 8px 0; color: #666;">${formattedStartDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Time:</td>
+              <td style="padding: 8px 0; color: #666;">
+                ${formattedStartTime}${
+      endDate
+        ? ` to ${
+            formattedStartDate === formattedEndDate
+              ? formattedEndTime
+              : `${formattedEndDate} ${formattedEndTime}`
+          }`
+        : ""
+    }
+              </td>
+            </tr>
+            ${
+              workshopDetails.location
+                ? `
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Location:</td>
+              <td style="padding: 8px 0; color: #666;">${workshopDetails.location}</td>
+            </tr>
+            `
+                : ""
+            }
+            ${
+              workshopDetails.level
+                ? `
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Level:</td>
+              <td style="padding: 8px 0; color: #666;">${workshopDetails.level}</td>
+            </tr>
+            `
+                : ""
+            }
+            ${
+              workshopDetails.category
+                ? `
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Category:</td>
+              <td style="padding: 8px 0; color: #666;">${workshopDetails.category}</td>
+            </tr>
+            `
+                : ""
+            }
+            ${
+              workshopDetails.instructorName
+                ? `
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Instructor:</td>
+              <td style="padding: 8px 0; color: #666;">${workshopDetails.instructorName}</td>
+            </tr>
+            `
+                : ""
+            }
+          </table>
         </div>
-        <p style="color: #666;">You can view the complete workshop details on your Smart Enroll dashboard.</p>
-        <p style="color: #666;">Thank you for using Smart Enroll!</p>
+        
+        ${
+          workshopDetails.description
+            ? `
+        <div style="margin: 20px 0;">
+          <h4 style="color: #333; margin: 0 0 10px 0;">Workshop Description:</h4>
+          <p style="color: #666; line-height: 1.5;">${workshopDetails.description}</p>
+        </div>
+        `
+            : ""
+        }
+        
+        ${
+          workshopDetails.virtualMeetingLink
+            ? `
+        <div style="margin: 20px 0; background-color: #e8f5e9; padding: 15px; border-radius: 5px;">
+          <h4 style="color: #2e7d32; margin: 0 0 10px 0;">Virtual Meeting Access:</h4>
+          <p style="margin: 0;">
+            <a href="${workshopDetails.virtualMeetingLink}" style="color: #2e7d32; font-weight: bold; text-decoration: none;">
+              Click here to join the workshop online
+            </a>
+          </p>
+          <p style="color: #666; font-size: 12px; margin-top: 5px;">
+            Save this email to access the link when the workshop starts.
+          </p>
+        </div>
+        `
+            : ""
+        }
+        
+        ${
+          workshopDetails.requirements
+            ? `
+        <div style="margin: 20px 0;">
+          <h4 style="color: #333; margin: 0 0 10px 0;">Workshop Requirements:</h4>
+          <p style="color: #666; line-height: 1.5;">${workshopDetails.requirements}</p>
+        </div>
+        `
+            : ""
+        }
+        
+        <div style="margin: 30px 0; padding-top: 15px; border-top: 1px solid #eee;">
+          <h4 style="color: #333; margin: 0 0 10px 0;">Need help?</h4>
+          ${
+            workshopDetails.contactEmail
+              ? `
+          <p style="color: #666; margin: 5px 0;">
+            Email: <a href="mailto:${workshopDetails.contactEmail}" style="color: #4CAF50; text-decoration: none;">${workshopDetails.contactEmail}</a>
+          </p>
+          `
+              : ""
+          }
+          ${
+            workshopDetails.contactPhone
+              ? `
+          <p style="color: #666; margin: 5px 0;">
+            Phone: ${workshopDetails.contactPhone}
+          </p>
+          `
+              : ""
+          }
+        </div>
+        
+        <p style="color: #666; margin-top: 30px;">Thank you for using Smart Enroll!</p>
+        
         <hr style="border: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #999; font-size: 12px;">This is an automated message, please do not reply to this email.</p>
+        <p style="color: #999; font-size: 12px;">This is an automated message. Please save or print this confirmation for your records.</p>
       </div>
     `
   );
-  
+
+  // Admin email remains unchanged
   sendMailViaUID(
     adminUserId,
     `New Registration for ${workshopTitle}`,
@@ -156,13 +398,9 @@ export const createRegistrationNotification = async (
     `
   );
 
-
   return notification;
 };
 
-/**
- * Create a capacity alert notification
- */
 export const createCapacityAlertNotification = async (
   adminUserId: string,
   workshopId: string,
@@ -259,8 +497,7 @@ export const createWorkshopReminderNotification = async (
       </div>
     `
   );
-  return notification
-  
+  return notification;
 };
 
 /**
@@ -355,5 +592,5 @@ export const createFeedbackNotification = async (
       </div>
     `
   );
-  return notification
+  return notification;
 };

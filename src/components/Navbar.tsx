@@ -66,13 +66,14 @@ export default function Navigation() {
               variant="outline" 
               onClick={() => router.push("/signin")}
               size="sm"
-              className="h-8 text-xs px-3 sm:h-10 sm:text-sm sm:px-4"
+              className="h-8 text-xs px-3 sm:h-10 sm:text-sm sm:px-4 rounded-full"
+
             >
               Log In
             </Button>
             <Button
               variant="default"
-              className="bg-black text-white hover:bg-gray-800 h-8 text-xs px-3 sm:h-10 sm:text-sm sm:px-4"
+              className="bg-black text-white hover:bg-gray-800 h-8 text-xs px-3 sm:h-10 sm:text-sm sm:px-4 rounded-full"
               onClick={() => router.push("/signup")}
               size="sm"
             >
@@ -90,7 +91,7 @@ export default function Navigation() {
             <Button
               onClick={() => router.push("/dashboard")}
               variant="default"
-              className="gap-2 cursor-pointer hidden lg:flex"
+              className="gap-2 cursor-pointer hidden lg:flex rounded-full"
               size="sm"
             >
               Dashboard
@@ -154,8 +155,8 @@ export default function Navigation() {
           <Image
             src="/logo.svg"
             alt="Smart-Enroll Logo"
-            width={100}
-            height={100}
+            width={180}
+            height={180}
            
           />
         </Link>
