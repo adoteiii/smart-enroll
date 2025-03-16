@@ -26,6 +26,8 @@ export interface WorkshopComponentProps {
   description: string;
   startDate: any;
   endDate: any;
+  venueLink?: string;
+  meetingLink?: string;
   location: string;
   capacity: number;
   workshopImage: Array<string>;

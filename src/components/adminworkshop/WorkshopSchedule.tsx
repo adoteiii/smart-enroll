@@ -201,6 +201,45 @@ export function WorkshopSchedule({
             </SelectContent>
           </Select>
         </div>
+        {workshop.location === "online" && (
+          <div className="space-y-2">
+            <Label htmlFor="meetingLink">Meeting Link</Label>
+            <input
+              type="url"
+              id="meetingLink"
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="Enter meeting URL"
+              value={workshop.meetingLink || ""}
+              onChange={(e) => onChange("meetingLink", e.target.value)}
+            />
+          </div>
+        )}
+        {(workshop.location === "in-person" || workshop.location === "hybrid") && (
+          <div className="space-y-2">
+            <Label htmlFor="venueLink">Venue Location</Label>
+            <input
+              type="url"
+              id="venueLink"
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="Enter Google Maps URL"
+              value={workshop.venueLink || ""}
+              onChange={(e) => onChange("venueLink", e.target.value)}
+            />
+          </div>
+        )}
+        {workshop.location === "hybrid" && (
+          <div className="space-y-2">
+            <Label htmlFor="meetingLink">Meeting Link</Label>
+            <input
+              type="url"
+              id="meetingLink"
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="Enter meeting URL"
+              value={workshop.meetingLink || ""}
+              onChange={(e) => onChange("meetingLink", e.target.value)}
+            />
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button variant="outline" onClick={onPrevious}>

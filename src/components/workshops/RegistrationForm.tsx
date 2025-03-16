@@ -78,7 +78,7 @@ export default function RegistrationForm({
     // Always include default fields for name and email regardless of settings
     schemaObj.fullName = z.string().min(2, "Full name is required");
     schemaObj.email = z.string().email("Invalid email address");
-
+    schemaObj.phone = z.string().optional();
     // Add custom fields from workshop configuration
     if (workshop.customRegistrationFields?.length) {
       workshop.customRegistrationFields.forEach((field) => {
@@ -158,6 +158,7 @@ export default function RegistrationForm({
       // Default empty fields for name and email
       fullName: "",
       email: "",
+      phone: "",
       // Add custom fields with their default values
       ...(workshop.customRegistrationFields?.reduce((acc, field) => {
         if (field.id) {
@@ -214,6 +215,7 @@ export default function RegistrationForm({
           uid: guestId, // Use the generated guest ID
           name: data.fullName,
           email: data.email.toLowerCase().trim(), // Ensure email is normalized
+          phone: data.phone
         },
         formData: { ...data },
       };
