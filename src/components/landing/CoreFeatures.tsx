@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card"
-import { Calendar, LineChart, Mail, MessageSquare, CheckCircle } from "lucide-react"
+import { Calendar, LineChart, Mail, MessageSquare, CheckCircle, Bell } from "lucide-react"
 
 export default function CoreFeatures() {
   return (
@@ -8,7 +8,7 @@ export default function CoreFeatures() {
         <div className="text-center">
           <h2 className="text-3xl font-bold">Core Features</h2>
           <p className="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">
-            Our platform adds real business value through AI-powered features designed for organizations
+            Our platform adds real business value through AI-powered features designed for organizations.
           </p>
         </div>
 
@@ -41,13 +41,13 @@ export default function CoreFeatures() {
 
 const features = [
   {
-    title: "AI-Powered Smart Registrations",
-    description: "Streamlined registration process with intelligent assistance.",
+    title: "AI-Powered Form Suggestions",
+    description: "Provides smart recommendations during form creation.",
     icon: Calendar,
     points: [
-      "Auto-fills student details",
-      "Detects duplicate entries",
-      "Provides personalized workshop recommendations based on user interests",
+      "Suggests relevant fields for workshop registrations",
+      "Helps organizers optimize their registration process",
+      "Ensures essential details are collected efficiently",
     ],
   },
   {
@@ -65,19 +65,20 @@ const features = [
     description: "Comprehensive insights for data-driven decisions.",
     icon: LineChart,
     points: [
-      "Tracks registrations, attendance, engagement rates",
+      "Tracks registrations, attendance, and engagement rates",
       "Predicts drop-off rates and suggests actions to increase turnout",
       "Generates custom reports for event organizers",
     ],
   },
   {
-    title: "Automated Notifications & Reminders",
+    title: "Automated Notifications & Admin Messaging",
     description: "Smart communication system that keeps everyone informed.",
-    icon: Mail,
+    icon: Bell,
     points: [
       "Email & SMS alerts for upcoming workshops",
-      "AI follows up with absentees and suggests alternative sessions",
-      "Reduces no-shows by up to 40%",
+     
+      "Admins can send reminders & updates directly to students",
+      "Custom notifications for admins on registrations, attendance, and event updates",
     ],
   },
 ]

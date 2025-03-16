@@ -9,6 +9,13 @@ import {
   MoreHorizontal,
   Search,
   X,
+  BarChart3,
+  PieChart,
+  LineChart,
+  Users,
+  Filter,
+  CheckCheck,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +87,35 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { FormField, WorkshopComponentProps } from "@/lib/componentprops";
 import { exportRegistrationsToCSV } from "@/lib/utils/csvExport";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart as RePieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
+import ResponseAnalytics from "@/components/analytics/ResponseAnalytics";
+import { Mail } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  generateEmailTemplate,
+  sendRegistrationEmail,
+  EmailData,
+} from "@/lib/communication/registrationEmails";
 
 export default function RegistrationsPage() {
   const dispatch = useAppDispatch();
@@ -97,6 +133,16 @@ export default function RegistrationsPage() {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] =
     useState<WorkshopComponentProps | null>(null);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [emailData, setEmailData] = useState<EmailData>({
+    to: "",
+    subject: "",
+    html: "",
+  });
+  const [emailType, setEmailType] = useState<
+    "confirmation" | "reminder" | "waitlist" | "cancelled" | "custom"
+  >("custom");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Get data from Redux store
   const organization = useAppSelector(
@@ -279,6 +325,41 @@ export default function RegistrationsPage() {
     return matchesSearch && matchesWorkshop && matchesStatus;
   });
 
+  const prepareEmailSend = (registration: Registration) => {
+    setSelectedRegistration(registration);
+
+    // Get the workshop for this registration
+    const workshop = workshops.find((w) => w.docID === registration.workshopId);
+
+    // Determine default email type based on registration status
+    let defaultEmailType:
+      | "confirmation"
+      | "reminder"
+      | "waitlist"
+      | "cancelled"
+      | "custom";
+
+    switch (registration.status) {
+      case "confirmed":
+        defaultEmailType = "confirmation";
+        break;
+      case "waitlist":
+        defaultEmailType = "waitlist";
+        break;
+      case "cancelled":
+        defaultEmailType = "cancelled";
+        break;
+      default:
+        defaultEmailType = "custom";
+    }
+
+    setEmailType(defaultEmailType);
+    setEmailData(
+      generateEmailTemplate(registration, workshop, defaultEmailType)
+    );
+    setIsEmailDialogOpen(true);
+  };
+
   // Handle status updates
   const handleStatusUpdate = async (
     registrationId: string,
@@ -315,7 +396,46 @@ export default function RegistrationsPage() {
     }
   };
 
-  // Update your formatDate function to handle different date formats
+  const handleSendEmail = async () => {
+    if (!selectedRegistration || !selectedRegistration.student?.email) {
+      toast.error("No valid recipient email found");
+      return;
+    }
+
+    try {
+      setIsSendingEmail(true);
+
+      await sendRegistrationEmail(emailData);
+
+      const regRef = doc(db, "registrations", selectedRegistration.docID);
+      await updateDoc(regRef, {
+        lastEmailSent: {
+          type: emailType,
+          timestamp: new Date().toISOString(),
+        },
+        updatedAt: new Date().toISOString(),
+      });
+
+      const updatedReg = {
+        ...selectedRegistration,
+        lastEmailSent: {
+          type: emailType,
+          timestamp: new Date().toISOString(),
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      dispatch(updateRegistration(updatedReg));
+
+      toast.success(`Email sent to ${selectedRegistration.student.email}`);
+      setIsEmailDialogOpen(false);
+    } catch (error) {
+      console.error("Error sending email:", error);
+      toast.error("Failed to send email");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const formatDate = (date: any, formatStr = "MMM d, yyyy") => {
     if (!date) return "No date";
 
@@ -582,14 +702,9 @@ export default function RegistrationsPage() {
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => {
-                              // Email functionality would go here
-                              toast.success(
-                                `Email sent to ${registration.student?.email}`
-                              );
-                            }}
+                            onClick={() => prepareEmailSend(registration)}
                           >
-                            Send Email
+                            <Mail className="mr-2 h-4 w-4" /> Send Email
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
 
@@ -847,6 +962,578 @@ export default function RegistrationsPage() {
             <DialogClose asChild>
               <Button variant="outline">Close</Button>
             </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registration Analytics Section */}
+      <div className="mt-6">
+        <div className="flex flex-col gap-2 mb-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Registration Insights
+          </h2>
+          <p className="text-muted-foreground">
+            Analytics and data visualization based on registration responses
+          </p>
+        </div>
+
+        <Tabs defaultValue="overview" className="space-y-4 ">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <TabsList>
+              <TabsTrigger value="overview" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Overview</span>
+              </TabsTrigger>
+              <TabsTrigger value="responses" className="gap-2">
+                <CheckCheck className="h-4 w-4" />
+                <span className="hidden sm:inline">Response Analysis</span>
+              </TabsTrigger>
+              <TabsTrigger value="students" className="gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Student Breakdown</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Select
+                  value={workshopFilter}
+                  onValueChange={setWorkshopFilter}
+                >
+                  <SelectTrigger className="w-[180px] h-8">
+                    <SelectValue placeholder="All Workshops" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all-workshops">All Workshops</SelectItem>
+                    {workshops.map((workshop) => (
+                      <SelectItem key={workshop.docID} value={workshop.docID}>
+                        {workshop.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" className="h-8 gap-1">
+                  <Filter className="h-3 w-3" />
+                  Filters
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total Registrations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {registrations.length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Across {workshops.length} workshops
+                  </p>
+                  <div className="mt-4 h-[100px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={workshops
+                          .slice(0, 5)
+                          .map((w) => ({
+                            name:
+                              w.title?.substring(0, 15) +
+                              (w.title?.length > 15 ? "..." : ""),
+                            count: registrations.filter(
+                              (r) => r.workshopId === w.docID
+                            ).length,
+                          }))
+                          .sort((a, b) => b.count - a.count)}
+                      >
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 10 }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "rgba(0, 0, 0, 0.05)" }}
+                          contentStyle={{ fontSize: 12 }}
+                        />
+                        <Bar
+                          dataKey="count"
+                          fill="var(--primary)"
+                          radius={[4, 4, 0, 0]}
+                          barSize={40}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Registration Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between mb-2">
+                    <div>
+                      <div className="text-2xl font-bold">
+                        {
+                          registrations.filter((r) => r.status === "confirmed")
+                            .length
+                        }
+                      </div>
+                      <p className="text-xs text-muted-foreground">Confirmed</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">
+                        {
+                          registrations.filter((r) => r.status === "pending")
+                            .length
+                        }
+                      </div>
+                      <p className="text-xs text-muted-foreground">Pending</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">
+                        {
+                          registrations.filter((r) => r.status === "waitlist")
+                            .length
+                        }
+                      </div>
+                      <p className="text-xs text-muted-foreground">Waitlist</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 h-[100px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RePieChart>
+                        <Pie
+                          data={[
+                            {
+                              name: "Confirmed",
+                              value: registrations.filter(
+                                (r) => r.status === "confirmed"
+                              ).length,
+                            },
+                            {
+                              name: "Pending",
+                              value: registrations.filter(
+                                (r) => r.status === "pending"
+                              ).length,
+                            },
+                            {
+                              name: "Waitlist",
+                              value: registrations.filter(
+                                (r) => r.status === "waitlist"
+                              ).length,
+                            },
+                            {
+                              name: "Cancelled",
+                              value: registrations.filter(
+                                (r) => r.status === "cancelled"
+                              ).length,
+                            },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={30}
+                          outerRadius={50}
+                          fill="#8884d8"
+                          paddingAngle={1}
+                          dataKey="value"
+                        >
+                          <Cell fill="var(--primary)" />
+                          <Cell fill="var(--muted)" />
+                          <Cell fill="var(--secondary)" />
+                          <Cell fill="var(--destructive)" />
+                        </Pie>
+                        <Legend
+                          layout="horizontal"
+                          verticalAlign="bottom"
+                          align="center"
+                          wrapperStyle={{ fontSize: 10 }}
+                        />
+                      </RePieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Registration Trend
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {
+                      registrations.filter(
+                        (r) =>
+                          r.registeredAt &&
+                          new Date(r.registeredAt).getTime() >
+                            Date.now() - 7 * 24 * 60 * 60 * 1000
+                      ).length
+                    }
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    New registrations in the last 7 days
+                  </p>
+                  <div className="mt-4 h-[100px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={Array.from({ length: 7 }, (_, i) => {
+                          const date = new Date();
+                          date.setDate(date.getDate() - (6 - i));
+                          return {
+                            name: format(date, "EEE"),
+                            count: registrations.filter(
+                              (r) =>
+                                r.registeredAt &&
+                                format(
+                                  new Date(r.registeredAt),
+                                  "yyyy-MM-dd"
+                                ) === format(date, "yyyy-MM-dd")
+                            ).length,
+                          };
+                        })}
+                      >
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 10 }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "rgba(0, 0, 0, 0.05)" }}
+                          contentStyle={{ fontSize: 12 }}
+                        />
+                        <Bar
+                          dataKey="count"
+                          fill="var(--primary)"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Response Analysis Tab */}
+          <TabsContent value="responses" className="space-y-4">
+            {workshopFilter === "all-workshops" ? (
+              <div className="rounded-md bg-muted/50 p-4 text-center">
+                <p>Select a specific workshop to analyze form responses</p>
+                <div className="mt-2 max-w-[300px] mx-auto">
+                  <Select
+                    value={workshopFilter}
+                    onValueChange={setWorkshopFilter}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a workshop" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workshops.map((workshop) => (
+                        <SelectItem key={workshop.docID} value={workshop.docID}>
+                          {workshop.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : (
+              <ResponseAnalytics
+                registrations={registrations.filter(
+                  (r) => r.workshopId === workshopFilter
+                )}
+                workshop={workshops.find((w) => w.docID === workshopFilter)}
+              />
+            )}
+          </TabsContent>
+
+          {/* Student Breakdown Tab */}
+          <TabsContent value="students" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Student Response Breakdown</CardTitle>
+                <CardDescription>
+                  View individual student responses and participation data
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[500px] pr-4">
+                  <Accordion type="single" collapsible className="w-full">
+                    {/* Get unique students */}
+                    {Array.from(
+                      new Set(
+                        registrations
+                          .filter(
+                            (r) =>
+                              workshopFilter === "all-workshops" ||
+                              r.workshopId === workshopFilter
+                          )
+                          .map((r) => r.student?.email)
+                      )
+                    )
+                      .filter(Boolean)
+                      .map((email) => {
+                        const studentRegistrations = registrations.filter(
+                          (r) => r.student?.email === email
+                        );
+                        const studentInfo = studentRegistrations[0]?.student;
+
+                        return (
+                          <AccordionItem key={email} value={email || "unknown"}>
+                            <AccordionTrigger>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6">
+                                  {studentInfo?.profileImage ? (
+                                    <AvatarImage
+                                      src={studentInfo.profileImage}
+                                      alt={studentInfo?.name || "Student"}
+                                    />
+                                  ) : null}
+                                  <AvatarFallback>
+                                    {studentInfo?.name?.charAt(0) || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">
+                                  {studentInfo?.name || "Unknown Student"}
+                                </span>
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  {studentRegistrations.length} registration
+                                  {studentRegistrations.length !== 1 ? "s" : ""}
+                                </span>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="space-y-4 pl-8">
+                                {studentRegistrations.map((reg) => (
+                                  <div
+                                    key={reg.docID}
+                                    className="border rounded-md p-3"
+                                  >
+                                    <div className="flex justify-between">
+                                      <div>
+                                        <h4 className="font-medium">
+                                          {reg.workshop?.title ||
+                                            "Unknown Workshop"}
+                                        </h4>
+                                        <p className="text-sm text-muted-foreground">
+                                          {reg.workshop?.startDate
+                                            ? formatDate(reg.workshop.startDate)
+                                            : "No date"}
+                                        </p>
+                                      </div>
+                                      <Badge
+                                        variant={getStatusVariant(reg.status)}
+                                      >
+                                        {reg.status.charAt(0).toUpperCase() +
+                                          reg.status.slice(1)}
+                                      </Badge>
+                                    </div>
+
+                                    {reg.formData &&
+                                      Object.keys(reg.formData).length > 0 && (
+                                        <div className="mt-3 pt-3 border-t">
+                                          <h5 className="text-sm font-medium mb-2">
+                                            Form Responses:
+                                          </h5>
+                                          <div className="space-y-2">
+                                            {Object.entries(reg.formData)
+                                              .filter(
+                                                ([key]) =>
+                                                  ![
+                                                    "name",
+                                                    "email",
+                                                    "fullName",
+                                                    "emailAddress",
+                                                  ].includes(key.toLowerCase())
+                                              )
+                                              .map(([key, value]) => {
+                                                const workshop = workshops.find(
+                                                  (w) =>
+                                                    w.docID === reg.workshopId
+                                                );
+                                                const field =
+                                                  workshop?.customRegistrationFields?.find(
+                                                    (f) => f.id === key
+                                                  );
+
+                                                return (
+                                                  <div
+                                                    key={key}
+                                                    className="text-sm"
+                                                  >
+                                                    <span className="text-muted-foreground">
+                                                      {field?.label || key}:
+                                                    </span>{" "}
+                                                    <span className="font-medium">
+                                                      {Array.isArray(value)
+                                                        ? value.join(", ")
+                                                        : String(
+                                                            value ||
+                                                              "Not provided"
+                                                          )}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                          </div>
+                                        </div>
+                                      )}
+                                  </div>
+                                ))}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        );
+                      })}
+                  </Accordion>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Add Email Dialog */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Send Email to {selectedRegistration?.student?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Send registration information or updates to the participant
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email-to">To</Label>
+                <Input
+                  id="email-to"
+                  value={selectedRegistration?.student?.email || ""}
+                  readOnly
+                  disabled
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email-type">Email Template</Label>
+                <Select
+                  value={emailType}
+                  onValueChange={(value) => {
+                    setEmailType(
+                      value as
+                        | "confirmation"
+                        | "reminder"
+                        | "waitlist"
+                        | "cancelled"
+                        | "custom"
+                    );
+                    if (value !== "custom" && selectedRegistration) {
+                      const workshop = workshops.find(
+                        (w) => w.docID === selectedRegistration.workshopId
+                      );
+                      setEmailData(
+                        generateEmailTemplate(
+                          selectedRegistration,
+                          workshop,
+                          value as
+                            | "confirmation"
+                            | "reminder"
+                            | "waitlist"
+                            | "cancelled"
+                        )
+                      );
+                    }
+                  }}
+                >
+                  <SelectTrigger id="email-type" className="w-full">
+                    <SelectValue placeholder="Select email type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="confirmation">
+                      Registration Confirmation
+                    </SelectItem>
+                    <SelectItem value="reminder">Workshop Reminder</SelectItem>
+                    <SelectItem value="waitlist">
+                      Waitlist Notification
+                    </SelectItem>
+                    <SelectItem value="cancelled">
+                      Registration Cancelled
+                    </SelectItem>
+                    <SelectItem value="custom">Custom Email</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email-subject">Subject</Label>
+              <Input
+                id="email-subject"
+                value={emailData.subject}
+                onChange={(e) =>
+                  setEmailData({ ...emailData, subject: e.target.value })
+                }
+                placeholder="Email subject"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email-content">Email Content</Label>
+              <Textarea
+                id="email-content"
+                value={emailData.html}
+                onChange={(e) =>
+                  setEmailData({ ...emailData, html: e.target.value })
+                }
+                placeholder="Enter the email content..."
+                className="min-h-[300px] font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                HTML formatting is supported. You can use variables like{" "}
+                {"{name}"}, {"{workshop.title}"}, etc.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEmailDialogOpen(false)}
+              disabled={isSendingEmail}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              disabled={isSendingEmail}
+              className="gap-2"
+            >
+              {isSendingEmail ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4" /> Send Email
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

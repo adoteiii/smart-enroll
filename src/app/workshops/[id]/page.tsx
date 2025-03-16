@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { useContext } from "react"
-import { Context } from "@/lib/userContext"
-import type { WorkshopComponentProps } from "@/lib/componentprops"
-import { doc, getDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase/firebase"
-import { format } from "date-fns"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useContext } from "react";
+import { Context } from "@/lib/userContext";
+import type { WorkshopComponentProps } from "@/lib/componentprops";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/firebase";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Calendar,
   Clock,
@@ -24,12 +24,19 @@ import {
   Share2,
   Bookmark,
   CheckCircle,
-} from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useAppSelector } from "@/redux/store"
-import RegistrationForm from "@/components/workshops/RegistrationForm"
-import { Separator } from "@/components/ui/separator"
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAppSelector } from "@/redux/store";
+import RegistrationForm from "@/components/workshops/RegistrationForm";
+import { Separator } from "@/components/ui/separator";
 
 export default function WorkshopDetailsPage() {
   const { id } = useParams();
@@ -38,23 +45,22 @@ export default function WorkshopDetailsPage() {
 
   // Get workshops from Redux for initial load
   const reduxWorkshops = useAppSelector((state) => state.WorkshopReducer.value);
-  const workshop = reduxWorkshops?.find(w=>w.docID === id)
+  const workshop = reduxWorkshops?.find((w) => w.docID === id);
 
   // Helper function to get timestamp in milliseconds from various formats
   const getTimestamp = (date: any): number => {
     if (typeof date === "number") {
-      return date
+      return date;
     }
     if (typeof date === "string") {
-      return new Date(date).getTime()
+      return new Date(date).getTime();
     }
     if (date && typeof date === "object" && date.seconds) {
       // Firestore timestamp
-      return date.seconds * 1000 + date.nanoseconds / 1000000
+      return date.seconds * 1000 + date.nanoseconds / 1000000;
     }
-    return 0 // Default fallback
-  }
-
+    return 0; // Default fallback
+  };
 
   // // Fetch workshop data from Firestore
   // useEffect(() => {
@@ -98,77 +104,92 @@ export default function WorkshopDetailsPage() {
   //   fetchWorkshop();
   // }, [id, reduxWorkshops, router]);
 
-
   // Check if workshop is full
   const isWorkshopFull = () => {
-    if (!workshop) return false
-    return workshop.registeredCount >= workshop.capacity
-  }
+    if (!workshop) return false;
+    return workshop.registeredCount >= workshop.capacity;
+  };
 
   // Check if workshop has ended
   const isWorkshopEnded = () => {
-    if (!workshop) return false
-    return getTimestamp(workshop.endDate) < Date.now()
-  }
+    if (!workshop) return false;
+    return getTimestamp(workshop.endDate) < Date.now();
+  };
 
   // Handle registration click
   const handleRegisterClick = () => {
     // Only check if workshop has ended or is full
     if (isWorkshopFull() && !workshop?.enableWaitlist) {
-      toast.error("This workshop is full")
-      return
+      toast.error("This workshop is full");
+      return;
     }
 
     if (isWorkshopEnded()) {
-      toast.error("This workshop has already ended")
-      return
+      toast.error("This workshop has already ended");
+      return;
     }
 
     // Open registration form - no login required
-    setShowRegistrationForm(true)
-  }
+    setShowRegistrationForm(true);
+  };
 
   // Handle successful registration
 
   const handleRegistrationSuccess = (
     updatedWorkshop: WorkshopComponentProps
   ) => {
-    // done // 
+    // done //
     // nothing to update here //
   };
 
   // Format workshop status
   const getStatusBadge = () => {
-    if (!workshop) return null
-    const now = Date.now()
+    if (!workshop) return null;
+    const now = Date.now();
 
     if (getTimestamp(workshop.startDate) > now) {
       return (
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 font-medium rounded-full px-3">
+        <Badge
+          variant="outline"
+          className="bg-blue-50 text-blue-700 font-medium rounded-full px-3"
+        >
           Upcoming
         </Badge>
-      )
-    } else if (getTimestamp(workshop.startDate) <= now && getTimestamp(workshop.endDate) >= now) {
+      );
+    } else if (
+      getTimestamp(workshop.startDate) <= now &&
+      getTimestamp(workshop.endDate) >= now
+    ) {
       return (
-        <Badge variant="outline" className="bg-green-50 text-green-700 font-medium rounded-full px-3">
+        <Badge
+          variant="outline"
+          className="bg-green-50 text-green-700 font-medium rounded-full px-3"
+        >
           Ongoing
         </Badge>
-      )
+      );
     } else {
       return (
-        <Badge variant="outline" className="bg-gray-50 text-gray-700 font-medium rounded-full px-3">
+        <Badge
+          variant="outline"
+          className="bg-gray-50 text-gray-700 font-medium rounded-full px-3"
+        >
           Past
         </Badge>
-      )
+      );
     }
-  }
+  };
 
   // Render skeleton during loading
-  if (reduxWorkshops===undefined) {
+  if (reduxWorkshops === undefined) {
     return (
       <div className="container mx-auto py-12 px-4 max-w-7xl">
         <div className="mb-12">
-          <Button variant="ghost" onClick={() => router.push("/workshops")} className="mb-6 rounded-full">
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/workshops")}
+            className="mb-6 rounded-full"
+          >
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Workshops
           </Button>
           <Skeleton className="h-12 w-3/4 mb-3" />
@@ -204,7 +225,7 @@ export default function WorkshopDetailsPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!workshop) {
@@ -215,24 +236,27 @@ export default function WorkshopDetailsPage() {
           <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
             The workshop you're looking for doesn't exist or has been removed.
           </p>
-          <Button onClick={() => router.push("/workshops")} className="rounded-full">
+          <Button
+            onClick={() => router.push("/workshops")}
+            className="rounded-full"
+          >
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Workshops
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   // Generate key takeaways from description if not provided
-  const keyTakeaways = Array.isArray(workshop.additionalInformation) 
-    ? workshop.additionalInformation 
-    : workshop.additionalInformation 
-      ? [workshop.additionalInformation] 
-      : [
-          "Gain practical skills and knowledge in this area",
-          "Learn from industry experts with real-world experience",
-          "Network with peers and build professional connections",
-        ]
+  const keyTakeaways = Array.isArray(workshop.additionalInformation)
+    ? workshop.additionalInformation
+    : workshop.additionalInformation
+    ? [workshop.additionalInformation]
+    : [
+        "Gain practical skills and knowledge in this area",
+        "Learn from industry experts with real-world experience",
+        "Network with peers and build professional connections",
+      ];
 
   return (
     <div className="container mx-auto py-12 px-4 max-w-7xl">
@@ -245,18 +269,92 @@ export default function WorkshopDetailsPage() {
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Workshops
         </Button>
+
         <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-          <h1 className="text-4xl font-bold tracking-tight">{workshop.title}</h1>
+          <h1 className="text-4xl font-bold tracking-tight">
+            {workshop.title}
+          </h1>
           {getStatusBadge()}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-gray-500 dark:text-gray-400">
-          <span className="font-medium">By {workshop.organization_name || "Organization"}</span>
+
+        <div className="flex flex-wrap items-center gap-2 text-gray-500 dark:text-gray-400 mb-6">
+          <span className="font-medium">
+            By {workshop.organization_name || "Organization"}
+          </span>
           {workshop.speaker?.name && (
             <>
               <span className="text-gray-300 dark:text-gray-600">•</span>
               <span>Presented by {workshop.speaker.name}</span>
             </>
           )}
+        </div>
+
+        {/* New Register Button at the top */}
+        <div className="flex flex-wrap gap-3 mb-4">
+          <Button
+            size="lg"
+            className="rounded-full font-medium text-base shadow-sm"
+            disabled={
+              (isWorkshopFull() && !workshop.enableWaitlist) ||
+              isWorkshopEnded()
+            }
+            variant={
+              isWorkshopFull() && !workshop.enableWaitlist
+                ? "outline"
+                : "default"
+            }
+            onClick={handleRegisterClick}
+          >
+            {isWorkshopEnded()
+              ? "Workshop Ended"
+              : isWorkshopFull()
+              ? workshop.enableWaitlist
+                ? "Join Waitlist"
+                : "Workshop Full"
+              : "Register Now"}
+          </Button>
+
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              toast.success("Link copied to clipboard");
+            }}
+          >
+            <Share2 className="h-4 w-4 mr-2" /> Share
+          </Button>
+        </div>
+
+        {/* Key workshop info summary */}
+        <div className="flex flex-wrap gap-5 text-sm mb-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            <span>
+              {format(
+                new Date(getTimestamp(workshop.startDate)),
+                "MMM d, yyyy"
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            <span>
+              {format(new Date(getTimestamp(workshop.startDate)), "h:mm a")}
+            </span>
+          </div>
+          {workshop.location && (
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span>{workshop.location}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            <span>
+              {workshop.registeredCount || 0}/{workshop.capacity} enrolled
+            </span>
+          </div>
         </div>
       </div>
 
@@ -282,21 +380,34 @@ export default function WorkshopDetailsPage() {
                   <Calendar className="h-5 w-5 text-primary" />
                   <div className="text-sm">
                     <div className="font-medium">Date</div>
-                    <div>{format(new Date(getTimestamp(workshop.startDate)), "MMM d, yyyy")}</div>
+                    <div>
+                      {format(
+                        new Date(getTimestamp(workshop.startDate)),
+                        "MMM d, yyyy"
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary" />
                   <div className="text-sm">
                     <div className="font-medium">Time</div>
-                    <div>{format(new Date(getTimestamp(workshop.startDate)), "h:mm a")}</div>
+                    <div>
+                      {format(
+                        new Date(getTimestamp(workshop.startDate)),
+                        "h:mm a"
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Award className="h-5 w-5 text-primary" />
                   <div className="text-sm">
                     <div className="font-medium">Level</div>
-                    <div>{workshop.level.charAt(0).toUpperCase() + workshop.level.slice(1)}</div>
+                    <div>
+                      {workshop.level.charAt(0).toUpperCase() +
+                        workshop.level.slice(1)}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -315,7 +426,9 @@ export default function WorkshopDetailsPage() {
           {/* Workshop description */}
           <div className="space-y-10">
             <div>
-              <h2 className="text-2xl font-semibold mb-4">About this workshop</h2>
+              <h2 className="text-2xl font-semibold mb-4">
+                About this workshop
+              </h2>
               <div className="text-gray-700 dark:text-gray-300 space-y-4 leading-relaxed">
                 <p>{workshop.description}</p>
               </div>
@@ -326,7 +439,7 @@ export default function WorkshopDetailsPage() {
               <h2 className="text-2xl font-semibold mb-4">What you'll learn</h2>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
                 <ul className="space-y-3">
-                  {keyTakeaways.map((item:string, index: number) => (
+                  {keyTakeaways.map((item: string, index: number) => (
                     <li key={index} className="flex items-start gap-3">
                       <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                       <span>{item}</span>
@@ -339,12 +452,16 @@ export default function WorkshopDetailsPage() {
             {/* Speaker information */}
             {workshop.speaker && (
               <div>
-                <h2 className="text-2xl font-semibold mb-4">About the Speaker</h2>
+                <h2 className="text-2xl font-semibold mb-4">
+                  About the Speaker
+                </h2>
                 <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-xl">
                   <div className="flex items-start gap-5">
                     {workshop.speaker.profileImage ? (
                       <img
-                        src={workshop.speaker.profileImage || "/placeholder.svg"}
+                        src={
+                          workshop.speaker.profileImage || "/placeholder.svg"
+                        }
                         alt={workshop.speaker.name}
                         className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-sm"
                       />
@@ -354,10 +471,15 @@ export default function WorkshopDetailsPage() {
                       </div>
                     )}
                     <div>
-                      <h3 className="font-semibold text-xl mb-1">{workshop.speaker.name}</h3>
-                      <p className="text-gray-500 dark:text-gray-400 mb-3">{workshop.speaker.bio || "Speaker"}</p>
+                      <h3 className="font-semibold text-xl mb-1">
+                        {workshop.speaker.name}
+                      </h3>
+                      <p className="text-gray-500 dark:text-gray-400 mb-3">
+                        {workshop.speaker.bio || "Speaker"}
+                      </p>
                       <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                        {workshop.speaker.bio || "No bio available for this speaker."}
+                        {workshop.speaker.bio ||
+                          "No bio available for this speaker."}
                       </p>
                     </div>
                   </div>
@@ -372,15 +494,24 @@ export default function WorkshopDetailsPage() {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span>Professionals looking to advance their skills in {workshop.category || "this field"}</span>
+                    <span>
+                      Professionals looking to advance their skills in{" "}
+                      {workshop.category || "this field"}
+                    </span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span>Students interested in gaining practical knowledge and experience</span>
+                    <span>
+                      Students interested in gaining practical knowledge and
+                      experience
+                    </span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span>Anyone with a {workshop.level} level understanding of the subject</span>
+                    <span>
+                      Anyone with a {workshop.level} level understanding of the
+                      subject
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -394,8 +525,8 @@ export default function WorkshopDetailsPage() {
                   variant="outline"
                   className="rounded-full"
                   onClick={() => {
-                    navigator.clipboard.writeText(window.location.href)
-                    toast.success("Link copied to clipboard")
+                    navigator.clipboard.writeText(window.location.href);
+                    toast.success("Link copied to clipboard");
                   }}
                 >
                   <Share2 className="h-4 w-4 mr-2" /> Share
@@ -413,14 +544,21 @@ export default function WorkshopDetailsPage() {
           <Card className="sticky top-24 border-0 shadow-sm overflow-hidden">
             <CardHeader className="bg-gray-50 dark:bg-gray-900 border-b pb-4">
               <CardTitle className="text-xl">Registration Details</CardTitle>
-              <CardDescription>Secure your spot in this workshop</CardDescription>
+              <CardDescription>
+                Secure your spot in this workshop
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 pt-6">
               <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-primary" />
                 <div>
                   <div className="font-medium">Date</div>
-                  <div>{format(new Date(getTimestamp(workshop.startDate)), "EEEE, MMMM d, yyyy")}</div>
+                  <div>
+                    {format(
+                      new Date(getTimestamp(workshop.startDate)),
+                      "EEEE, MMMM d, yyyy"
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -428,7 +566,11 @@ export default function WorkshopDetailsPage() {
                 <div>
                   <div className="font-medium">Time</div>
                   <div>
-                    {format(new Date(getTimestamp(workshop.startDate)), "h:mm a")} -{" "}
+                    {format(
+                      new Date(getTimestamp(workshop.startDate)),
+                      "h:mm a"
+                    )}{" "}
+                    -{" "}
                     {format(new Date(getTimestamp(workshop.endDate)), "h:mm a")}
                   </div>
                 </div>
@@ -448,10 +590,14 @@ export default function WorkshopDetailsPage() {
                   <div className="font-medium">Capacity</div>
                   <div className="flex items-center gap-2">
                     <span>
-                      {workshop.registeredCount || 0} / {workshop.capacity} enrolled
+                      {workshop.registeredCount || 0} / {workshop.capacity}{" "}
+                      enrolled
                     </span>
                     {isWorkshopFull() && !workshop.enableWaitlist && (
-                      <Badge variant="outline" className="bg-red-50 text-red-700 rounded-full px-2 text-xs">
+                      <Badge
+                        variant="outline"
+                        className="bg-red-50 text-red-700 rounded-full px-2 text-xs"
+                      >
                         Full
                       </Badge>
                     )}
@@ -462,7 +608,10 @@ export default function WorkshopDetailsPage() {
                 <Award className="h-5 w-5 text-primary" />
                 <div>
                   <div className="font-medium">Level</div>
-                  <div>{workshop.level.charAt(0).toUpperCase() + workshop.level.slice(1)}</div>
+                  <div>
+                    {workshop.level.charAt(0).toUpperCase() +
+                      workshop.level.slice(1)}
+                  </div>
                 </div>
               </div>
               {workshop.category && (
@@ -482,7 +631,10 @@ export default function WorkshopDetailsPage() {
                     {workshop.isFree ? (
                       <>
                         <span>Free</span>
-                        <Badge variant="outline" className="bg-green-50 text-green-700 rounded-full px-2 text-xs">
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-700 rounded-full px-2 text-xs"
+                        >
                           Free
                         </Badge>
                       </>
@@ -496,17 +648,24 @@ export default function WorkshopDetailsPage() {
             <CardFooter className="pt-2 pb-6">
               <Button
                 className="w-full h-12 rounded-full font-medium text-base"
-                disabled={(isWorkshopFull() && !workshop.enableWaitlist) || isWorkshopEnded()}
-                variant={isWorkshopFull() && !workshop.enableWaitlist ? "outline" : "default"}
+                disabled={
+                  (isWorkshopFull() && !workshop.enableWaitlist) ||
+                  isWorkshopEnded()
+                }
+                variant={
+                  isWorkshopFull() && !workshop.enableWaitlist
+                    ? "outline"
+                    : "default"
+                }
                 onClick={handleRegisterClick}
               >
                 {isWorkshopEnded()
                   ? "Workshop Ended"
                   : isWorkshopFull()
-                    ? workshop.enableWaitlist
-                      ? "Join Waitlist"
-                      : "Workshop Full"
-                    : "Register Now"}
+                  ? workshop.enableWaitlist
+                    ? "Join Waitlist"
+                    : "Workshop Full"
+                  : "Register Now"}
               </Button>
             </CardFooter>
           </Card>
@@ -523,6 +682,5 @@ export default function WorkshopDetailsPage() {
         />
       )}
     </div>
-  )
+  );
 }
-

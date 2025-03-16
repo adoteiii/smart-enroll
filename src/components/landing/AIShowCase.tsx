@@ -19,7 +19,7 @@ export default function AIShowcase() {
           <Tabs defaultValue="chatbot" className="w-full">
             <TabsList className="grid w-full max-w-md mx-auto grid-cols-3">
               <TabsTrigger value="chatbot">AI Chatbot</TabsTrigger>
-              <TabsTrigger value="dashboard">Analytics</TabsTrigger>
+         
               <TabsTrigger value="registration">Registration</TabsTrigger>
             </TabsList>
             <TabsContent value="chatbot" className="mt-6">

@@ -1,77 +1,178 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Bot, Send, User } from "lucide-react"
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Bot, Send, User } from "lucide-react";
+import { useAppSelector } from "@/redux/store";
 
 export default function ChatbotDemo() {
+  // Get workshops data from Redux store (only non-sensitive information)
+  const workshops = useAppSelector((state) => state.WorkshopReducer.value);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
   const [messages, setMessages] = useState([
     {
       role: "bot",
       content:
-        "Hello! I'm your AI workshop assistant. How can I help your organization today? You can ask about setting up workshops, managing registrations, or analytics features.",
+        "Hello! I'm your Smart Enroll assistant. How can I help you today? You can ask about workshops, registration process, or platform features. Note that only workshop organizers need to create accounts - students can register directly!",
     },
-  ])
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-    // Add user message
-    setMessages((prev) => [...prev, { role: "user", content: input }])
-    setIsLoading(true)
+  // Prepare workshop information
+  const getWorkshopInfo = () => {
+    let workshopInfo = "No workshops currently available.";
 
-    // Simulate AI response
-    setTimeout(() => {
-      let response = ""
+    if (workshops && workshops.length > 0) {
+      const activeWorkshops = workshops.filter(
+        (w) => w.status === "upcoming" || w.status === "ongoing"
+      );
+      if (activeWorkshops.length > 0) {
+        workshopInfo = `Currently available workshops (${activeWorkshops.length} total):\n`;
+        activeWorkshops.slice(0, 5).forEach((workshop, index) => {
+          workshopInfo += `- "${workshop.title}" - ${
+            workshop.category || "General"
+          } (${workshop.level || "All levels"})\n`;
+        });
+        if (activeWorkshops.length > 5) {
+          workshopInfo += `- And ${
+            activeWorkshops.length - 5
+          } more workshops\n`;
+        }
+      }
+    }
+    return workshopInfo;
+  };
 
-      if (input.toLowerCase().includes("pricing") || input.toLowerCase().includes("cost")) {
-        response =
-          "Our pricing is designed to be flexible for organizations of all sizes:\n\n• Free Tier: Up to 100 registrations per event with basic features\n• Business Plan ($99/month): Unlimited registrations with full AI features\n• Enterprise: Custom pricing with API access and white-labeling\n\nWould you like to schedule a demo to see which plan fits your needs?"
-      } else if (input.toLowerCase().includes("analytics") || input.toLowerCase().includes("dashboard")) {
-        response =
-          "Our analytics dashboard provides real-time insights for your organization:\n\n• Track registration and attendance rates\n• Monitor engagement across different workshops\n• Identify trends and patterns to optimize future events\n• Generate custom reports for stakeholders\n\nThe dashboard is fully customizable to focus on the metrics that matter most to your organization."
-      } else if (input.toLowerCase().includes("setup") || input.toLowerCase().includes("start")) {
-        response =
-          "Getting started is simple:\n\n1. Create your organization account\n2. Set up your first event or workshop series\n3. Customize your registration forms with your branding\n4. Invite participants via email or shareable link\n\nOur AI will then help manage registrations, send reminders, and provide analytics. Would you like me to guide you through the setup  send reminders, and provide analytics. Would you like me to guide you through the setup process?"
-      } else if (input.toLowerCase().includes("chatbot") || input.toLowerCase().includes("ai assistant")) {
-        response =
-          "Our AI chatbot provides 24/7 support for both administrators and participants:\n\n• For administrators: Help with event setup, scheduling, and analytics interpretation\n• For participants: Workshop recommendations, registration assistance, and FAQs\n\nThe chatbot learns from interactions to continuously improve its responses and can be customized with your organization's specific information and policies."
-      } else {
-        response =
-          "I'd be happy to help your organization with workshop management. Our platform helps streamline the entire process from registration to follow-up:\n\n• Reduce administrative workload by up to 75%\n• Increase attendance rates with AI-powered reminders\n• Gain valuable insights through our analytics dashboard\n\nWhat specific aspect of workshop management is your organization looking to improve?"
+  // Call the server-side API instead of directly using Gemini
+  const askAssistant = async (userMessage: string) => {
+    try {
+      // Get limited chat history (only last 3 messages)
+      const history =
+        messages.length > 3
+          ? messages.slice(-3)
+          : messages.length > 1
+          ? messages
+          : [];
+
+      // Call our secure API endpoint
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          history: history,
+          workshopInfo: getWorkshopInfo(),
+          systemInfo:
+            "IMPORTANT: Only workshop organizers need to create accounts. Students do NOT need accounts to register for workshops - they can register directly.",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("API error:", errorData);
+        throw new Error(errorData.error || "Network response was not ok");
       }
 
-      setMessages((prev) => [...prev, { role: "bot", content: response }])
-      setIsLoading(false)
-      setInput("")
-    }, 1500)
-  }
+      const data = await response.json();
+      return data.response;
+    } catch (error) {
+      console.error("Error calling chat API:", error);
+      return getFallbackResponse(userMessage);
+    }
+  };
+
+  // Provide fallback responses that include correct account information
+  const getFallbackResponse = (userMessage: string) => {
+    const query = userMessage.toLowerCase();
+
+    if (
+      query.includes("account") ||
+      query.includes("sign up") ||
+      query.includes("register")
+    ) {
+      return "Important: Students don't need to create accounts to attend workshops! Only workshop organizers need accounts. Students can register directly for any workshop using the registration form.";
+    } else if (query.includes("workshop") || query.includes("class")) {
+      return `Here are the available workshops: ${getWorkshopInfo()} Students can register directly without creating an account.`;
+    } else if (
+      query.includes("organizer") ||
+      query.includes("create workshop")
+    ) {
+      return "Workshop organizers need to create an account to manage their workshops. After creating an account, you can set up workshops, track registrations, and manage attendance.";
+    } else {
+      return "Smart Enroll makes workshop management easy. Workshop organizers create accounts to set up workshops, while students can register directly without creating accounts. How else can I help you?";
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    // Add user message
+    setMessages((prev) => [...prev, { role: "user", content: input }]);
+    const userMessage = input;
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      // Get response from our server API
+      const response = await askAssistant(userMessage);
+
+      // Add response to messages
+      setMessages((prev) => [...prev, { role: "bot", content: response }]);
+    } catch (error) {
+      console.error("Error handling message:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          content: getFallbackResponse(userMessage),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+      e.preventDefault();
+      handleSend();
     }
-  }
+  };
 
   return (
     <Card className="border rounded-xl overflow-hidden">
       <div className="bg-gray-50 p-4 border-b">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-black" />
-          <h3 className="font-medium">Business AI Assistant</h3>
+          <h3 className="font-medium">Smart Enroll Assistant</h3>
         </div>
       </div>
 
-      <div className="h-[400px] overflow-y-auto p-4 space-y-4">
+      <div
+        className="h-[400px] overflow-y-auto p-4 space-y-4"
+        ref={chatContainerRef}
+      >
         {messages.map((message, i) => (
-          <div key={i} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div
+            key={i}
+            className={`flex ${
+              message.role === "user" ? "justify-end" : "justify-start"
+            }`}
+          >
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                 message.role === "user" ? "bg-black text-white" : "bg-gray-100"
@@ -86,7 +187,7 @@ export default function ChatbotDemo() {
                 ) : (
                   <>
                     <Bot className="h-4 w-4" />
-                    <span className="text-xs font-medium">AI Assistant</span>
+                    <span className="text-xs font-medium">Smart Enroll</span>
                   </>
                 )}
               </div>
@@ -114,7 +215,7 @@ export default function ChatbotDemo() {
       <div className="border-t p-4">
         <div className="flex gap-2">
           <Input
-            placeholder="Ask about features, pricing, or getting started..."
+            placeholder="Ask about workshops or registration..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -131,6 +232,5 @@ export default function ChatbotDemo() {
         </div>
       </div>
     </Card>
-  )
+  );
 }
-

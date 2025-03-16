@@ -51,6 +51,7 @@ import { db } from "@/lib/firebase/firebase";
 import { v4 as uuidv4 } from "uuid";
 import { createRegistrationNotification } from "@/lib/firebase/notifications";
 import { createWriteBatch } from "@/lib/firebase/firestore";
+import { isEmailAlreadyRegistered } from "@/lib/firebase/registrationUtils";
 
 interface RegistrationFormProps {
   workshop: WorkshopComponentProps;
@@ -181,6 +182,19 @@ export default function RegistrationForm({
     setIsSubmitting(true);
 
     try {
+      const emailExists = await isEmailAlreadyRegistered(
+        workshop.docID,
+        data.email
+      );
+
+      if (emailExists) {
+        toast.error(
+          "This email address is already registered for this workshop."
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       // Create a unique ID for this registration
       const registrationId = uuidv4();
       const batch = createWriteBatch();
@@ -196,13 +210,11 @@ export default function RegistrationForm({
         registeredAt: new Date().toISOString(),
         timestamp: Date.now(),
         status: workshop.requireApproval ? "pending" : "confirmed",
-        // Store the student's info directly from form data
         student: {
           uid: guestId, // Use the generated guest ID
           name: data.fullName,
-          email: data.email,
+          email: data.email.toLowerCase().trim(), // Ensure email is normalized
         },
-        // Store all form responses
         formData: { ...data },
       };
 
@@ -224,7 +236,7 @@ export default function RegistrationForm({
           waitlist: arrayUnion({
             docID: registrationId,
             name: data.fullName,
-            email: data.email,
+            email: data.email.toLowerCase().trim(),
             timestamp: new Date().toISOString(),
           }),
           waitlistCount: increment(1),
@@ -267,7 +279,7 @@ export default function RegistrationForm({
         registrationData.student,
         batch
       );
-      await batch.commit()
+      await batch.commit();
 
       onSuccess(updatedWorkshop);
       onClose();

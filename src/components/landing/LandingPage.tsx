@@ -28,14 +28,12 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
-    
 
       <HeroSection />
       <ProblemSolution />
       <CoreFeatures />
       <AIShowcase />
       <HowItWorks />
-      <BusinessImpact registrationCount={registrationCount} />
       <PricingPlans />
       <FinalCTA />
       <Footer />

@@ -1,15 +1,14 @@
 "use client";
 
-import { useContext, useState } from "react";
-import { Bot } from "lucide-react";
+import { useContext } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Context } from "@/lib/userContext";
 import { signOut } from "../lib/firebase/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronRight, MenuIcon } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { ChevronRight } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,16 +16,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function Navigation() {
   const { user, loading: loadingUser } = useContext(Context);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const path = usePathname();
   const router = useRouter();
 
-  if (path === "/signin" || path === "/signup" || path.startsWith("/dashboard")) {
+  if (
+    path === "/signin" ||
+    path === "/signup" ||
+    path.startsWith("/dashboard")
+  ) {
     return null;
   }
 
@@ -44,7 +45,7 @@ export default function Navigation() {
     if (loadingUser) {
       return (
         <div className="flex items-center gap-2">
-          <Button variant="ghost" className="opacity-50" disabled>
+          <Button variant="ghost" className="opacity-50" disabled size="sm">
             Loading...
           </Button>
         </div>
@@ -52,32 +53,45 @@ export default function Navigation() {
     }
 
     return (
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {!user ? (
           <>
-            <Link href="/workshops" className="text-gray-700 hover:text-black">
+            <Link 
+              href="/workshops" 
+              className="text-gray-700 hover:text-black text-sm hidden sm:block"
+            >
               Workshops
             </Link>
-            <Button variant="outline" onClick={() => router.push("/signin")}>
+            <Button 
+              variant="outline" 
+              onClick={() => router.push("/signin")}
+              size="sm"
+              className="h-8 text-xs px-3 sm:h-10 sm:text-sm sm:px-4"
+            >
               Log In
             </Button>
             <Button
               variant="default"
-              className="bg-black text-white hover:bg-gray-800"
+              className="bg-black text-white hover:bg-gray-800 h-8 text-xs px-3 sm:h-10 sm:text-sm sm:px-4"
               onClick={() => router.push("/signup")}
+              size="sm"
             >
-              Get Started Free
+              Sign Up
             </Button>
           </>
         ) : (
           <>
-            <Link href="/workshops" className="text-gray-700 hover:text-black">
+            <Link 
+              href="/workshops" 
+              className="text-gray-700 hover:text-black text-sm hidden sm:block"
+            >
               Workshops
             </Link>
             <Button
               onClick={() => router.push("/dashboard")}
               variant="default"
               className="gap-2 cursor-pointer hidden lg:flex"
+              size="sm"
             >
               Dashboard
               <ChevronRight className="stroke-[2px]" size={15} />
@@ -133,45 +147,17 @@ export default function Navigation() {
     );
   };
 
-  const renderMobileMenu = () => {
-    return (
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden">
-            <MenuIcon className="h-4 w-4" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-0">
-          <div className="flex flex-col gap-4 p-4">
-            <Link
-              href="/workshops"
-              className="text-sm font-medium text-muted-foreground hover:text-primary"
-              onClick={() => setIsSheetOpen(false)}
-            >
-              Workshops
-            </Link>
-            {user && (
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-muted-foreground hover:text-primary"
-                onClick={() => setIsSheetOpen(false)}
-              >
-                Dashboard
-              </Link>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  };
-
   return (
-    <nav className="flex items-center justify-between px-6 py-4 lg:px-8 border-b">
-      <div className="flex items-center space-x-2">
-        {renderMobileMenu()}
-        <Link href="/" className="flex items-center space-x-2">
-          <Bot className="h-8 w-8 text-black" />
-          <span className="text-xl font-semibold">Smart-Enroll</span>
+    <nav className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8 border-b bg-white/95 backdrop-blur-sm shadow-sm">
+      <div className="flex items-center">
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/logo.svg"
+            alt="Smart-Enroll Logo"
+            width={100}
+            height={100}
+           
+          />
         </Link>
       </div>
       {renderAuthButtons()}

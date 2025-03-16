@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Bot } from "lucide-react"
+import Image from "next/image"
 
 export default function Footer() {
   return (
@@ -8,8 +9,12 @@ export default function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           <div>
             <div className="flex items-center space-x-2">
-              <Bot className="h-6 w-6 text-black" />
-              <span className="text-lg font-semibold">Smart-Enroll</span>
+             <Image
+                src="/logo.svg"
+                alt="Smart-Enroll"
+                width={100}
+                height={100}
+             />
             </div>
             <p className="mt-4 text-sm text-gray-600">
               AI-enhanced workshop registration and management platform for organizations

@@ -49,11 +49,8 @@ export default function Signup() {
   ) : (
     <div className="h-screen w-full overflow-hidden">
       <div className="h-full w-full grid lg:grid-cols-2">
-      
         <div className="relative hidden h-full lg:flex flex-col bg-white dark:bg-gray-900 p-6">
- 
           <div className="relative h-full w-full rounded-3xl overflow-hidden shadow-xl flex flex-col">
-        
             <div className="absolute inset-0">
               <Image
                 src="/assets/images/seminar-image-2.jpg"
@@ -62,22 +59,23 @@ export default function Signup() {
                 className="object-cover"
                 priority
               />
-              
+
               <div className="absolute inset-0 bg-black/10" />
             </div>
 
             <div className="relative z-20 p-10">
               <Link href={"/"} className="flex items-center space-x-2">
-                <span className="font-bold text-xl text-white">
-                  Smart Enroll
-                </span>
+                <Image
+                  src="/logo.svg"
+                  alt="Smart Enroll"
+                  width={150}
+                  height={150}
+                />
               </Link>
             </div>
 
             <div className="flex-1 flex flex-col items-center relative z-20 justify-center p-10 text-white">
               <div className="w-full max-w-sm">
-               
-
                 {/* Clean card design for information */}
                 <div className="bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden border border-white/20">
                   <div className="p-5">
@@ -148,7 +146,12 @@ export default function Signup() {
               <div className="flex justify-center">
                 {/* Mobile-only logo */}
                 <div className="lg:hidden flex items-center space-x-2 mb-6">
-                  <span className="font-bold text-xl">Smart Enroll</span>
+                  <Image
+                    src="/logo.svg"
+                    alt="Smart Enroll"
+                    width={150}
+                    height={150}
+                  />
                 </div>
               </div>
               <h1 className="text-3xl font-bold tracking-tight">

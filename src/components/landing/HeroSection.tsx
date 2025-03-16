@@ -3,16 +3,17 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import NiceBadge from "../ui/nice-badge";
 
 export default function HeroSection() {
   return (
-    <section className="py-10 md:py-12 px-4">
+    <section className="py-10 md:py-12 px-4 mt-12">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="flex flex-col justify-center">
-            <Badge className="mb-3 w-fit bg-primary hover:bg-primary/90">
-              AI-Powered
-            </Badge>
+            <div className="flex flex-wrap gap-3">
+              <NiceBadge size="sm" />
+            </div>
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
               Smart Workshop Enrollment
             </h1>
