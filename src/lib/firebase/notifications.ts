@@ -26,6 +26,11 @@ export const NOTIFICATION_TYPES = {
   CAPACITY_ALERT: "capacity-alert",
   FEEDBACK_RECEIVED: "feedback-received",
   APPROVAL_REQUEST: "approval-request",
+  WORKSHOP_CANCELED: "workshop-canceled",
+  WORKSHOP_UPDATED: "workshop-updated",
+  WORKSHOP_REMOVED: "workshop-removed",
+  WORKSHOP_RESTORED: "workshop-restored",
+  WORKSHOP_PUBLISHED: "workshop-published",
 };
 
 // Notification interface matching the Firestore structure
@@ -57,6 +62,163 @@ export const createNotification = async (
   }
 };
 
+export const createWorkshopNotification = async (
+  userId: string,
+  workshopId: string,
+  workshopTitle: string,
+  startDate: Date,
+  organizationid: string,
+  type: (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES],
+  batch?: WriteBatch
+) => {
+  const formattedDate = startDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const notification = await createNotification(
+    {
+      userId,
+      title: "Workshop Created",
+      message: `A new workshop "${workshopTitle}" has been created which starts at ${formattedDate}`,
+      type,
+      relatedId: workshopId,
+      link: `/dashboard/workshops/${workshopId}`,
+      viewed: {},
+      deleted: {},
+      organizationId: organizationid,
+    },
+    batch
+  );
+  // based on the type, send different emails
+  switch (type) {
+    case NOTIFICATION_TYPES.WORKSHOP_CANCELED:
+      sendMailViaUID(
+        userId,
+        `Workshop Canceled - ${workshopTitle}`,
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Workshop Canceled</h2>
+            <p style="color: #666;">Your workshop has been canceled.</p>
+            <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-radius: 5px;">
+              <h3 style="color: #333; margin: 0;">${workshopTitle}</h3>
+              <p style="color: #666; margin: 10px 0 0 0;">Start Time: ${formattedDate}</p>
+            </div>
+            <p style="color: #666;">Please contact the organizer for more information.</p>
+            <hr style="border: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">This is an automated message from Smart Enroll.</p>
+          </div>
+        `
+      );
+      break;
+    case NOTIFICATION_TYPES.WORKSHOP_UPDATED:
+      sendMailViaUID(
+        userId,
+        `Workshop Updated - ${workshopTitle}`,
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Workshop Updated</h2>
+            <p style="color: #666;">Your workshop details have been updated.</p>
+            <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-radius: 5px;">
+              <h3 style="color: #333; margin: 0;">${workshopTitle}</h3>
+              <p style="color: #666; margin: 10px 0 0 0;">Start Time: ${formattedDate}</p>
+            </div>
+            <p style="color: #666;">Please review the changes on your Smart Enroll dashboard.</p>
+            <hr style="border: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">This is an automated message from Smart Enroll.</p>
+          </div>
+        `
+      );
+      break;
+    case NOTIFICATION_TYPES.WORKSHOP_REMOVED:
+      sendMailViaUID(
+        userId,
+        `Workshop Removed - ${workshopTitle}`,
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Workshop Removed</h2>
+            <p style="color: #666;">Your workshop has been removed.</p>
+            <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-radius: 5px;">
+              <h3 style="color: #333; margin: 0;">${workshopTitle}</h3>
+              <p style="color: #666; margin: 10px 0 0 0;">Start Time: ${formattedDate}</p>
+            </div>
+            <p style="color: #666;">Please contact the organizer for more information.</p>
+            <hr style="border: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">This is an automated message from Smart Enroll.</p>
+          </div>
+        `
+      );
+      break;
+    case NOTIFICATION_TYPES.WORKSHOP_RESTORED:
+      sendMailViaUID(
+        userId,
+        `Workshop Restored - ${workshopTitle}`,
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Workshop Restored</h2>
+            <p style="color: #666;">Your workshop has been restored.</p>
+            <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-radius: 5px;">
+              <h3 style="color: #333; margin: 0;">${workshopTitle}</h3>
+              <p style="color: #666; margin: 10px 0 0 0;">Start Time: ${formattedDate}</p>
+            </div>
+            <p style="color: #666;">Please review the details on your Smart Enroll dashboard.</p>
+            <hr style="border: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">This is an automated message from Smart Enroll.</p>
+          </div>
+        `
+      );
+      break;
+    case NOTIFICATION_TYPES.WORKSHOP_PUBLISHED:
+      sendMailViaUID(
+        userId,
+        `Workshop Published - ${workshopTitle}`,
+        `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Workshop Published</h2>
+            <p style="color: #666;">Your workshop is now published and available for registration.</p>
+            <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-radius: 5px;">
+              <h3 style="color: #333; margin: 0;">${workshopTitle}</h3>
+              <p style="color: #666; margin: 10px 0 0 0;">Start Time: ${formattedDate}</p>
+            </div>
+            <p style="color: #666;">Registrants can now view and register for your workshop.</p>
+            <hr style="border: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px;">This is an automated message from Smart Enroll.</p>
+          </div>
+        `
+      );
+      break;
+    default:
+      break;
+  }
+
+  // sendMailViaUID(
+  //   userId,
+  //   `Reminder: Your Workshop Tomorrow - ${workshopTitle}`,
+  //   `
+  //     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  //       <h2 style="color: #333;">Workshop Reminder</h2>
+  //       <p style="color: #666;">Your workshop is scheduled for tomorrow!</p>
+  //       <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-radius: 5px;">
+  //         <h3 style="color: #333; margin: 0;">${workshopTitle}</h3>
+  //         <p style="color: #666; margin: 10px 0 0 0;">Start Time: ${formattedDate}</p>
+  //       </div>
+  //       <p style="color: #666;">Don't forget to:</p>
+  //       <ul style="color: #666;">
+  //         <li>Review any pre-workshop materials</li>
+  //         <li>Prepare any required equipment or supplies</li>
+  //         <li>Check your calendar and set a reminder</li>
+  //       </ul>
+  //       <p style="color: #666;">You can view the complete workshop details on your Smart Enroll dashboard.</p>
+  //       <hr style="border: 1px solid #eee; margin: 20px 0;">
+  //       <p style="color: #999; font-size: 12px;">This is an automated reminder from Smart Enroll.</p>
+  //     </div>
+  //   `
+  // );
+  return notification;
+};
 /**
  * Mark a notification as read
  */
@@ -108,7 +270,8 @@ export const createRegistrationNotification = async (
     location?: string;
     description?: string;
     instructorName?: string;
-    virtualMeetingLink?: string;
+    venueLink?: string;
+    meetingLink?: string;
     requirements?: string;
     contactEmail?: string;
     contactPhone?: string;
@@ -210,13 +373,16 @@ export const createRegistrationNotification = async (
       if (workshopDetails.location) {
         smsMessage += `📍 ${workshopDetails.location}\n`;
       }
+      if (workshopDetails.venueLink) {
+        smsMessage += `Venue Location Link: ${workshopDetails.venueLink}\n`;
+      }
 
       if (workshopDetails.instructorName) {
         smsMessage += `👨‍🏫 Instructor: ${workshopDetails.instructorName}\n`;
       }
 
-      if (workshopDetails.virtualMeetingLink) {
-        smsMessage += `🔗 Join online: ${workshopDetails.virtualMeetingLink}\n`;
+      if (workshopDetails.meetingLink) {
+        smsMessage += `🔗 Join online: ${workshopDetails.meetingLink}\n`;
       }
 
       smsMessage += `\nCheck your email for complete details.\n`;
@@ -271,6 +437,7 @@ export const createRegistrationNotification = async (
             <tr>
               <td style="padding: 8px 0; color: #666; font-weight: bold;">Location:</td>
               <td style="padding: 8px 0; color: #666;">${workshopDetails.location}</td>
+
             </tr>
             `
                 : ""
@@ -320,12 +487,12 @@ export const createRegistrationNotification = async (
         }
         
         ${
-          workshopDetails.virtualMeetingLink
+          workshopDetails.meetingLink
             ? `
         <div style="margin: 20px 0; background-color: #e8f5e9; padding: 15px; border-radius: 5px;">
           <h4 style="color: #2e7d32; margin: 0 0 10px 0;">Virtual Meeting Access:</h4>
           <p style="margin: 0;">
-            <a href="${workshopDetails.virtualMeetingLink}" style="color: #2e7d32; font-weight: bold; text-decoration: none;">
+            <a href="${workshopDetails.meetingLink}" style="color: #2e7d32; font-weight: bold; text-decoration: none;">
               Click here to join the workshop online
             </a>
           </p>

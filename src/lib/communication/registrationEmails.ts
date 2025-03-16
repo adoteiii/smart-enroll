@@ -56,6 +56,8 @@ export function generateEmailTemplate(
                 ? `<p><strong>Location:</strong> ${workshop.location}</p>`
                 : ""
             }
+            ${workshop?.venueLink ? `<p><strong>Venue Link:</strong> <a href="${workshop.venueLink}">${workshop.venueLink}</a></p>` : ""}
+            ${workshop?.meetingLink ? `<p><strong>Meeting Link:</strong> <a href="${workshop.meetingLink}">${workshop.meetingLink}</a></p>` : ""}
           </div>
           
           <p>We look forward to seeing you at the event!</p>
@@ -81,6 +83,10 @@ export function generateEmailTemplate(
                 ? `<p><strong>Location:</strong> ${workshop.location}</p>`
                 : ""
             }
+            ${workshop?.venueLink ? `<p><strong>Venue Location Link:</strong> <a href="${workshop.venueLink}">${workshop.venueLink}</a></p>` : ""}
+
+
+            ${workshop?.meetingLink ? `<p><strong>Meeting Link:</strong> <a href="${workshop.meetingLink}">${workshop.meetingLink}</a></p>` : ""}
           </div>
           
           <p>We look forward to seeing you there!</p>
@@ -140,6 +146,7 @@ export function generateEmailTemplate(
           
           <div style="margin: 20px 0; padding: 15px; border-left: 4px solid #9C27B0; background-color: #f9f9f9;">
             <p><strong>Workshop:</strong> ${workshopTitle}</p>
+            ${workshop?.venueLink ? `<p><strong>Venue Link:</strong> <a href="${workshop.venueLink}">${workshop.venueLink}</a></p>` : ""}
             <p><strong>Date:</strong> ${workshopDate}</p>
             <p><strong>Time:</strong> ${workshopTime}</p>
             <p><strong>Status:</strong> ${
@@ -148,6 +155,7 @@ export function generateEmailTemplate(
             }</p>
           </div>
           
+            ${workshop?.meetingLink ? `<p><strong>Meeting Link:</strong> <a href="${workshop.meetingLink}">${workshop.meetingLink}</a></p>` : ""}
           <p>If you have any questions about your registration, please contact us.</p>
         </div>
       `;

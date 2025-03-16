@@ -40,6 +40,7 @@ import { addDraft, updateDraft } from "@/redux/features/admin/draftsSlice";
 import { setAdminWorkshop } from "@/redux/features/admin/workshopSlice";
 import StudentRegistration from "@/components/adminworkshop/StudentRegistration";
 import dayjs from "dayjs";
+import { createWorkshopNotification, NOTIFICATION_TYPES } from "@/lib/firebase/notifications";
 
 function deepCleanUndefined(obj: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {};
@@ -454,8 +455,11 @@ export default function CreateWorkshopPage() {
           deleted: true, // Mark as deleted
         });
       }
-
+      
+      await createWorkshopNotification(dbuser.uid, docID, workshop.title, dayjs(workshop.timestamp).toDate(), organization.docID||"", NOTIFICATION_TYPES.WORKSHOP_PUBLISHED, );
       await commitBatch(batch);
+      // create notification for you
+      
 
       // Update Redux state - update drafts & workshops
       if (draftId) {
