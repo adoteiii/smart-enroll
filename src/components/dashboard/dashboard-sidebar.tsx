@@ -48,10 +48,7 @@ export default function AppSidebar() {
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="flex items-center justify-between px-4 py-2">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <LayoutDashboard className="h-6 w-6" />
-          <span className="font-bold text-xl">WorkshopAdmin</span>
-        </Link>
+       
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
