@@ -20,6 +20,7 @@ import localforage from "localforage";
 import { useDispatch } from "react-redux";
 import { AppDispatch, useAppSelector } from "@/redux/store";
 import {
+  FirebaseNotification,
   OrganizationFormData,
   Speaker,
   WorkshopComponentProps,
@@ -47,6 +48,7 @@ import { setOrganization } from "@/redux/features/admin/organizationSlice";
 import { setAdminSpeakers } from "@/redux/features/admin/speakersSlice";
 import { Message } from "@/lib/types";
 import { setMessages } from "@/redux/features/messagesSlice";
+import { setNotifications } from "@/redux/features/notificationSlice";
 
 const Layout = ({ children }: { children: ReactNode }) => {
   const { user } = useContext(Context);
@@ -646,6 +648,40 @@ const Layout = ({ children }: { children: ReactNode }) => {
         toast.error("Your email verification link could not been sent.");
       });
   };
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (!organization?.docID) return;
+    const notificationsRef = collection(db, "notifications");
+    const q = query(
+      notificationsRef,
+      where("organizationId", "==", organization.docID),
+      orderBy("createdAt", "desc")
+    );
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const notificationsData: FirebaseNotification[] = [];
+        console.log("notifications", querySnapshot.docs);
+        querySnapshot.forEach((doc) => {
+          notificationsData.push({
+            id: doc.id,
+            ...doc.data(),
+          } as FirebaseNotification);
+        });
+        dispatch(
+          setNotifications(
+            notificationsData.filter((n) => !n.deleted[user.uid])
+          )
+        );
+      },
+      (error) => {
+        console.log(error);
+        dispatch(setNotifications(null));
+      }
+    );
+    return unsubscribe;
+  }, [user, organization]);
 
   return (
     <Protected>

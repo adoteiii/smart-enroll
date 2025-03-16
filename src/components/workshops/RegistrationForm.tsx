@@ -45,10 +45,12 @@ import {
   arrayUnion,
   increment,
   serverTimestamp,
+  or,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { v4 as uuidv4 } from "uuid";
 import { createRegistrationNotification } from "@/lib/firebase/notifications";
+import { createWriteBatch } from "@/lib/firebase/firestore";
 
 interface RegistrationFormProps {
   workshop: WorkshopComponentProps;
@@ -181,7 +183,7 @@ export default function RegistrationForm({
     try {
       // Create a unique ID for this registration
       const registrationId = uuidv4();
-
+      const batch = createWriteBatch();
       // Generate a unique guest ID for this registration
       const guestId = `guest-${Date.now()}-${Math.random()
         .toString(36)
@@ -206,7 +208,7 @@ export default function RegistrationForm({
 
       // Save the registration to Firestore
       const registrationRef = doc(db, "registrations", registrationId);
-      await setDoc(registrationRef, registrationData);
+      batch.set(registrationRef, registrationData);
 
       // Update the workshop with new registration counts
       const workshopRef = doc(db, "workshops", workshop.docID);
@@ -218,7 +220,7 @@ export default function RegistrationForm({
 
       if (isWaitlist) {
         // Add to waitlist
-        await updateDoc(workshopRef, {
+        batch.update(workshopRef, {
           waitlist: arrayUnion({
             docID: registrationId,
             name: data.fullName,
@@ -229,7 +231,7 @@ export default function RegistrationForm({
         });
 
         // Update registration status to waitlist
-        await updateDoc(registrationRef, {
+        batch.update(registrationRef, {
           status: "waitlist",
           waitlistPosition: (workshop.waitlistCount || 0) + 1,
         });
@@ -237,7 +239,7 @@ export default function RegistrationForm({
         toast.success("You have been added to the waitlist!");
       } else {
         // Regular registration
-        await updateDoc(workshopRef, {
+        batch.update(workshopRef, {
           registeredCount: increment(1),
         });
 
@@ -260,8 +262,12 @@ export default function RegistrationForm({
         workshop.docID, // The admin who created the workshop
         `${data.fullName}`, // Student name
         workshop.docID, // Workshop ID
-        workshop.title // Workshop title
+        workshop.title, // Workshop title
+        workshop.organization, // Organization ID,
+        registrationData.student,
+        batch
       );
+      await batch.commit()
 
       onSuccess(updatedWorkshop);
       onClose();

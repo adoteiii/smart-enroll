@@ -31,6 +31,7 @@ import { Umbrella } from "lucide-react";
 import { SettingsOrganizationTable } from "./SettingsOrganizationTable";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import dayjs from "dayjs";
 
 export function OrganizationSettings() {
   const { user } = useContext(Context);
@@ -65,7 +66,7 @@ export function OrganizationSettings() {
           uid: user.uid,
           role: "ADMIN", // Set all users as admin by default
           email: user.email,
-          createdAt: Date.now(),
+          createdAt: dayjs().valueOf(),
         },
         { merge: true }
       )
