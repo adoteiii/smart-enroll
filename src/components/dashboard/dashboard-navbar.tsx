@@ -125,7 +125,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
                 <Bell className="h-5 w-5" />
                 {notifications?.filter(i=>!i.viewed[user.uid])?.length!==undefined && notifications.filter(i=>!i.viewed[user.uid])?.length > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0">
-                    {notifications.length > 9 ? "9+" : notifications.length}
+                    {notifications.filter(i=>!i.viewed[user.uid]).length > 9 ? "9+" : notifications.filter(i=>!i.viewed[user.uid]).length}
                   </Badge>
                 )}
               </Button>

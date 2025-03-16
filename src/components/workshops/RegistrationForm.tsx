@@ -259,7 +259,7 @@ export default function RegistrationForm({
 
       // Create a registration notification
       await createRegistrationNotification(
-        workshop.docID, // The admin who created the workshop
+        workshop.creator, // The admin who created the workshop
         `${data.fullName}`, // Student name
         workshop.docID, // Workshop ID
         workshop.title, // Workshop title

@@ -31,7 +31,7 @@ export async function sendMail (
   html: string
 ) {
   const notificationPromises = [getTransporter().sendMail({
-    from: `"Bloom Events" <${emailConfig.auth.user}>`,
+    from: `"Smart Enroll" <${emailConfig.auth.user}>`,
     to,
     subject,
     html,
