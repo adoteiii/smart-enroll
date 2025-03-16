@@ -277,7 +277,7 @@ export default function RegistrationForm({
         workshop.title, // Workshop title
         workshop.organization, // Organization ID,
         registrationData.student,
-        batch
+        workshop // Pass workshop information instead of batch
       );
       await batch.commit();
 
