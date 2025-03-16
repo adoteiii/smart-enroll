@@ -18,7 +18,7 @@ import StudentReducer from "./features/studentsSlice";
 import WorkshopReducer from "./features/workshopSlice";
 import DBUserReducer from "./features/dbuserSlice";
 import MessagesReducer from "./features/messagesSlice";
-
+import NotificationReducer from './features/notificationSlice'
 import AdminDraftsReducer from "./features/admin/draftsSlice"; // Add this
 
 export const store = configureStore({
@@ -37,7 +37,8 @@ export const store = configureStore({
     WorkshopReducer,
     AdminDraftsReducer,
     AdminRegistrationReducer,
-    MessagesReducer
+    MessagesReducer,
+    NotificationReducer,
   },
 });
 

@@ -19,21 +19,8 @@ import { toast } from "sonner";
 import localforage from "localforage";
 
 const WorkshopLayout = ({ children }: { children: React.ReactNode }) => {
-  // const store = localforage.createInstance({
-  //   name: "smart-enroll",
-  //   version: 2,
-  // });
-
-  const workshops = useAppSelector((state) => state.WorkshopReducer.value);
-
+ 
   const dispatch = useDispatch<AppDispatch>();
-
-  // Listen for snapshots
-  // useEffect(() => {
-  //   if (workshops !== undefined && lastModifiedWorkshop !== undefined) {
-  //     setUpdatingWorkshop(false);
-  //   }
-  // }, [workshops, lastModifiedWorkshop]);
 
   // Fetch all workshops initially if localforage is empty
   useEffect(() => {
@@ -75,6 +62,7 @@ const WorkshopLayout = ({ children }: { children: React.ReactNode }) => {
       (error) => {
         console.error("Error fetching all workshops:", error);
         toast.error("Failed to load workshops");
+        setWorkshop(null)
       }
     );
     return unsubscribe;

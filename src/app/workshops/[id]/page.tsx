@@ -37,14 +37,11 @@ import RegistrationForm from "@/components/workshops/RegistrationForm";
 export default function WorkshopDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user } = useContext(Context);
-
-  const [workshop, setWorkshop] = useState<WorkshopComponentProps | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
 
   // Get workshops from Redux for initial load
   const reduxWorkshops = useAppSelector((state) => state.WorkshopReducer.value);
+  const workshop = reduxWorkshops?.find(w=>w.docID === id)
 
   // Helper function to get timestamp in milliseconds from various formats
   const getTimestamp = (date: any): number => {
@@ -61,47 +58,47 @@ export default function WorkshopDetailsPage() {
     return 0; // Default fallback
   };
 
-  // Fetch workshop data from Firestore
-  useEffect(() => {
-    if (!id) return;
+  // // Fetch workshop data from Firestore
+  // useEffect(() => {
+  //   if (!id) return;
 
-    const fetchWorkshop = async () => {
-      setLoading(true);
-      // First try to get from Redux state
-      if (reduxWorkshops && reduxWorkshops.length > 0) {
-        const foundWorkshop = reduxWorkshops.find((w) => w.docID === id);
-        if (foundWorkshop) {
-          setWorkshop(foundWorkshop);
-          setLoading(false);
-          return;
-        }
-      }
+  //   const fetchWorkshop = async () => {
+  //     setLoading(true);
+  //     // First try to get from Redux state
+  //     if (reduxWorkshops && reduxWorkshops.length > 0) {
+  //       const foundWorkshop = reduxWorkshops.find((w) => w.docID === id);
+  //       if (foundWorkshop) {
+  //         setWorkshop(foundWorkshop);
+  //         setLoading(false);
+  //         return;
+  //       }
+  //     }
 
-      // If not found in Redux, fetch from Firestore
-      try {
-        const workshopDoc = await getDoc(doc(db, "workshops", id as string));
+  //     // If not found in Redux, fetch from Firestore
+  //     try {
+  //       const workshopDoc = await getDoc(doc(db, "workshops", id as string));
 
-        if (workshopDoc.exists()) {
-          const workshopData = {
-            ...workshopDoc.data(),
-            docID: workshopDoc.id,
-          } as WorkshopComponentProps;
+  //       if (workshopDoc.exists()) {
+  //         const workshopData = {
+  //           ...workshopDoc.data(),
+  //           docID: workshopDoc.id,
+  //         } as WorkshopComponentProps;
 
-          setWorkshop(workshopData);
-        } else {
-          toast.error("Workshop not found");
-          router.push("/workshops");
-        }
-      } catch (error) {
-        console.error("Error fetching workshop:", error);
-        toast.error("Failed to load workshop details");
-      } finally {
-        setLoading(false);
-      }
-    };
+  //         setWorkshop(workshopData);
+  //       } else {
+  //         toast.error("Workshop not found");
+  //         router.push("/workshops");
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching workshop:", error);
+  //       toast.error("Failed to load workshop details");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchWorkshop();
-  }, [id, reduxWorkshops, router]);
+  //   fetchWorkshop();
+  // }, [id, reduxWorkshops, router]);
 
   // Check if workshop is full
   const isWorkshopFull = () => {
@@ -136,7 +133,8 @@ export default function WorkshopDetailsPage() {
   const handleRegistrationSuccess = (
     updatedWorkshop: WorkshopComponentProps
   ) => {
-    setWorkshop(updatedWorkshop);
+    // done // 
+    // nothing to update here //
   };
 
   // Format workshop status
@@ -169,7 +167,7 @@ export default function WorkshopDetailsPage() {
   };
 
   // Render skeleton during loading
-  if (loading) {
+  if (reduxWorkshops===undefined) {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8">

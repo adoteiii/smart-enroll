@@ -3,14 +3,14 @@ import { WorkshopComponentProps } from "@/lib/componentprops";
 
 
 const initialState = {
-    value: undefined as WorkshopComponentProps[]|undefined,
+    value: undefined as WorkshopComponentProps[]|undefined|null,
 }
 export const Workshop = createSlice(
     {
         name: 'Workshop',
         initialState,
         reducers: {
-            setWorkshop: (state, action: PayloadAction<WorkshopComponentProps[]|undefined>)=> {
+            setWorkshop: (state, action: PayloadAction<WorkshopComponentProps[]|undefined|null>)=> {
                 return {
                     value: action.payload
                 }
