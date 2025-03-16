@@ -67,7 +67,6 @@ import { db } from "@/lib/firebase/firebase";
 import { setAdminStudents } from "@/redux/features/admin/studentsSlice";
 import {
   setAdminRegistrations,
-  updateRegistration,
 } from "@/redux/features/admin/registrationSlice";
 
 import Link from "next/link";
@@ -144,165 +143,10 @@ export default function RegistrationsPage() {
   >("custom");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  // Get data from Redux store
-  const organization = useAppSelector(
-    (state) => state.OrganizationReducer.value
-  );
-  const dbuser = useAppSelector((state) => state.DBUserReducer.value);
   const workshops =
     useAppSelector((state) => state.AdminWorkshopReducer.value) || [];
   const registrations =
     useAppSelector((state) => state.AdminRegistrationReducer.value) || [];
-  const students =
-    useAppSelector((state) => state.AdminStudentsReducer.value) || [];
-
-  // Fetch registrations and students data
-  useEffect(() => {
-    async function fetchData() {
-      if (!dbuser?.organizationid || !organization) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Fetch registrations for this organization's workshops
-        const workshopsQuery = query(
-          collection(db, "workshops"),
-          where("organization", "==", organization.docID)
-        );
-        const workshopsSnapshot = await getDocs(workshopsQuery);
-        const workshopIds = workshopsSnapshot.docs.map((doc) => doc.id);
-
-        if (workshopIds.length === 0) {
-          setIsLoading(false);
-          return;
-        }
-
-        // Fetch all registrations for those workshops
-        const registrationsQuery = query(
-          collection(db, "registrations"),
-          where("workshopId", "in", workshopIds)
-        );
-        const registrationsSnapshot = await getDocs(registrationsQuery);
-
-        const regs = registrationsSnapshot.docs.map(
-          (doc) =>
-            ({
-              docID: doc.id,
-              ...doc.data(),
-            } as Registration)
-        );
-
-        // Get unique student IDs from the registrations, filtering out guest/undefined IDs
-        const studentIds = regs
-          .map((reg) => reg.studentId)
-          .filter(
-            (id) => id !== undefined && id !== null && !id.startsWith("guest-")
-          )
-          .filter((id, index, arr) => arr.indexOf(id) === index);
-
-        // Only fetch student data if there are valid student IDs
-        let studentsData: Student[] = [];
-
-        if (studentIds.length > 0) {
-          // Fetch all student data
-          const studentPromises = studentIds.map((studentId) =>
-            getDoc(doc(db, "students", studentId))
-          );
-
-          const studentDocs = await Promise.all(studentPromises);
-          studentsData = studentDocs
-            .filter((doc) => doc.exists())
-            .map(
-              (doc) =>
-                ({
-                  docID: doc.id,
-                  ...doc.data(),
-                } as Student)
-            );
-
-          // Store students in Redux
-          dispatch(setAdminStudents(studentsData));
-        }
-
-        // Add a convertTimestamp helper
-        const convertTimestamp = (timestamp: any): number => {
-          if (!timestamp) return 0;
-
-          // Convert Firestore timestamp to milliseconds
-          if (
-            timestamp?.seconds !== undefined &&
-            timestamp?.nanoseconds !== undefined
-          ) {
-            return timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000;
-          }
-
-          // Convert string to number if it's a date string
-          if (typeof timestamp === "string") {
-            const parsedDate = Date.parse(timestamp);
-            return isNaN(parsedDate) ? 0 : parsedDate;
-          }
-
-          // Return as number
-          return Number(timestamp) || 0;
-        };
-
-        // Enrich registrations with student and workshop data
-        const enrichedRegistrations = regs.map((reg) => {
-          // Handle both registered users and guest registrations
-          let studentInfo;
-
-          if (reg.studentId) {
-            // For registered users, look up their info from the students collection
-            const student = studentsData.find((s) => s.docID === reg.studentId);
-            if (student) {
-              studentInfo = {
-                name: student.name,
-                email: student.email,
-                profileImage: student.profileImage || undefined,
-              };
-            }
-          }
-
-          // If no student info found (or it's a guest), use the embedded student info
-          if (!studentInfo && reg.student) {
-            studentInfo = {
-              name: reg.student.name,
-              email: reg.student.email,
-              profileImage: reg.student.profileImage || undefined,
-            };
-          }
-
-          const workshop = workshops.find((w) => w.docID === reg.workshopId);
-
-          // Convert any timestamps to serializable format
-          return {
-            ...reg,
-            registeredAt: reg.registeredAt,
-            timestamp: reg.timestamp,
-            student: studentInfo,
-            workshop: workshop
-              ? {
-                  title: workshop.title,
-                  startDate: convertTimestamp(workshop.startDate),
-                  endDate: convertTimestamp(workshop.endDate),
-                }
-              : undefined,
-          };
-        });
-
-        // Store registrations in Redux
-        dispatch(setAdminRegistrations(enrichedRegistrations));
-      } catch (error) {
-        console.error("Error fetching registrations data:", error);
-        toast.error("Failed to load registrations");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [dbuser, organization, workshops, dispatch]);
 
   // Filter registrations based on search and filters
   const filteredRegistrations = registrations.filter((registration) => {
@@ -375,17 +219,17 @@ export default function RegistrationsPage() {
         updatedAt: new Date().toISOString(),
       });
 
-      // Update in Redux
-      const updatedReg = registrations.find((r) => r.docID === registrationId);
-      if (updatedReg) {
-        dispatch(
-          updateRegistration({
-            ...updatedReg,
-            status: newStatus as any,
-            updatedAt: new Date().toISOString(),
-          })
-        );
-      }
+      // // Update in Redux
+      // const updatedReg = registrations.find((r) => r.docID === registrationId);
+      // if (updatedReg) {
+      //   dispatch(
+      //     updateRegistration({
+      //       ...updatedReg,
+      //       status: newStatus as any,
+      //       updatedAt: new Date().toISOString(),
+      //     })
+      //   );
+      // }
 
       toast.success(`Registration ${newStatus}`);
     } catch (error) {
@@ -416,15 +260,15 @@ export default function RegistrationsPage() {
         updatedAt: new Date().toISOString(),
       });
 
-      const updatedReg = {
-        ...selectedRegistration,
-        lastEmailSent: {
-          type: emailType,
-          timestamp: new Date().toISOString(),
-        },
-        updatedAt: new Date().toISOString(),
-      };
-      dispatch(updateRegistration(updatedReg));
+      // const updatedReg = {
+      //   ...selectedRegistration,
+      //   lastEmailSent: {
+      //     type: emailType,
+      //     timestamp: new Date().toISOString(),
+      //   },
+      //   updatedAt: new Date().toISOString(),
+      // };
+      // dispatch(updateRegistration(updatedReg));
 
       toast.success(`Email sent to ${selectedRegistration.student.email}`);
       setIsEmailDialogOpen(false);
@@ -517,7 +361,7 @@ export default function RegistrationsPage() {
   };
 
   // Handle loading state
-  if (isLoading) {
+  if (registrations===undefined) {
     return <Loader />;
   }
 

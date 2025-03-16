@@ -22,7 +22,9 @@ import { AppDispatch, useAppSelector } from "@/redux/store";
 import {
   FirebaseNotification,
   OrganizationFormData,
+  Registration,
   Speaker,
+  Student,
   WorkshopComponentProps,
 } from "@/lib/componentprops";
 import { useLocalStorage } from "usehooks-ts";
@@ -46,9 +48,11 @@ import { setAdminDraft } from "@/redux/features/admin/draftSlice";
 import { setOrganization } from "@/redux/features/admin/organizationSlice";
 // Add this to your imports section
 import { setAdminSpeakers } from "@/redux/features/admin/speakersSlice";
-import { Message } from "@/lib/types";
+import { DBUSER, Message } from "@/lib/types";
 import { setMessages } from "@/redux/features/messagesSlice";
 import { setNotifications } from "@/redux/features/notificationSlice";
+import { setAdminRegistrations } from "@/redux/features/admin/registrationSlice";
+import { setAdminStudents } from "@/redux/features/admin/studentsSlice";
 
 const Layout = ({ children }: { children: ReactNode }) => {
   const { user } = useContext(Context);
@@ -57,26 +61,15 @@ const Layout = ({ children }: { children: ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const dbuser = useAppSelector((state) => state.DBUserReducer.value);
-
-  const store = localforage.createInstance({
-    name: "smart-enroll",
-    version: 2,
-  });
-
+  const workshops = useAppSelector((state) => state.AdminWorkshopReducer.value);
+  const registrations = useAppSelector(
+    (state) => state.AdminRegistrationReducer.value
+  );
   const organization = useAppSelector(
     (state) => state.OrganizationReducer.value
   );
 
-  const workshop = useAppSelector((state) => state.AdminWorkshopReducer.value);
-  const [updatingAdminWorkshop, setUpdatingAdminWorkshop] = useState(true);
-  const [lastModifiedAdminWorkshop, setLastModifiedAdminWorkshop] = useState<
-    number | undefined
-  >(undefined);
-
   // draft
-  const [lastModifiedDraft, setLastModifiedDraft] = useLocalStorage<
-    undefined | number
-  >("smart-enroll-draft-lastmodified", undefined);
   const [draftStorage, setDraftStorage] = useLocalStorage<
     undefined | WorkshopComponentProps | null
   >("smart-enroll-draft", undefined);
@@ -98,13 +91,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
     );
     return unsubscribe;
   }, [dbuser]);
-
-  // listeners for snapshots
-  useEffect(() => {
-    if (workshop !== undefined && lastModifiedAdminWorkshop !== undefined) {
-      setUpdatingAdminWorkshop(false);
-    }
-  }, [workshop, lastModifiedAdminWorkshop]);
 
   useEffect(() => {
     if (!dbuser?.organizationid || !organization?.docID) {
@@ -232,167 +218,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
     return unsubscribe;
   }, [dbuser, organization]);
 
-  // useEffect(() => {
-  //   if (!dbuser?.organizationid) {
-  //     return;
-  //   }
-  //   if (organization?.docID !== dbuser.organizationid) {
-  //     return;
-  //   }
-  //   console.log("initial load... comp", lastModifiedAdminWorkshop);
-  //   store
-  //     .getItem("adminworksop")
-  //     .then((adminWorksopStorage: any) => {
-  //       console.log("stored already: ", adminWorksopStorage);
-  //       dispatch(
-  //         setAdminWorkshop(
-  //           adminWorksopStorage
-  //             ?.filter((i: any) => i.creator === dbuser?.organizationid)
-  //             ?.filter((i: any) => !i?.deleted) || []
-  //         )
-  //       );
-
-  //       store
-  //         .getItem("adminworkshop-lastmodified")
-  //         .then((lastmodified: any) => {
-  //           setLastModifiedAdminWorkshop(lastmodified || 0);
-
-  //           console.log("stored already ts: ", lastmodified);
-  //         })
-  //         .catch(() => {
-  //           // I rather the user restarts
-  //           setLastModifiedAdminWorkshop(0);
-  //           console.log("stored already ts: ", 0);
-  //         });
-  //     })
-  //     .catch(() => {
-  //       dispatch(setAdminWorkshop([]));
-  //       store
-  //         .getItem("adminworkshop-lastmodified")
-  //         .then((lastmodified: any) => {
-  //           setLastModifiedAdminWorkshop(lastmodified || 0);
-  //           // setUpdatingAdminCompetition(false);
-  //         })
-  //         .catch(() => {
-  //           // I rather the user restarts
-  //           setLastModifiedAdminWorkshop(0);
-  //         });
-  //     });
-  // }, [dbuser, organization]);
-
-  // useEffect(() => {
-  //   if (!dbuser?.organizationid) {
-  //     return;
-  //   }
-  //   if (organization?.docID !== dbuser.organizationid) {
-  //     // not registered / accepted
-  //     return;
-  //   }
-  //   if (updatingAdminWorkshop) {
-  //     // dont do anything while updating
-  //     // console.log("Busy with admin competitions");
-  //     return;
-  //   }
-  //   if (lastModifiedAdminWorkshop === undefined) {
-  //     return;
-  //   }
-  //   // console.log(lastModifiedAdminCompetitions, "last modified");
-  //   // console.log("beginning update competition", lastModifiedAdminCompetitions);
-  //   console.log(
-  //     "listener for event: ",
-  //     lastModifiedAdminWorkshop,
-  //     dbuser?.organizationid
-  //   );
-  //   const ref = collection(db, "workshops");
-  //   const ts = dayjs(lastModifiedAdminWorkshop || 0).toDate();
-  //   // console.log("listener ts", ts);
-  //   const q = query(
-  //     ref,
-  //     where("creator", "==", dbuser?.organizationid),
-  //     where("lastModified", ">", ts)
-  //   );
-  //   const unsubscribe = onSnapshot(
-  //     q,
-  //     (snapshot) => {
-  //       // store in local storage the last timestamp
-  //       // merge results
-  //       let data: WorkshopComponentProps[] = [];
-  //       console.log("snapshot event", snapshot.docs, ts);
-  //       snapshot.docs.forEach((doc) => {
-  //         data.push({
-  //           ...(doc.data() as WorkshopComponentProps),
-  //           docID: doc.id,
-  //           lastModified: {
-  //             seconds: doc.get("lastModified")?.seconds,
-  //             nanoseconds: doc.get("lastModified")?.nanoseconds,
-  //           },
-  //         });
-  //       });
-  //       // console.log(data, "snapshot data");
-  //       if (data === null || data === undefined) {
-  //         return;
-  //       }
-  //       data = data?.sort(
-  //         (a, b) => b.lastModified?.seconds - a.lastModified?.seconds
-  //       );
-  //       if (data && data.length > 0) {
-  //       } else {
-  //         return;
-  //       }
-  //       setUpdatingAdminWorkshop(true);
-  //       store.getItem("adminworkshop").then((AdminWorkshopStorage: any) => {
-  //         let datamerged: WorkshopComponentProps[] = [];
-  //         AdminWorkshopStorage?.forEach((d: WorkshopComponentProps) => {
-  //           datamerged.push(d);
-  //         });
-  //         let indexValue: any = {};
-  //         datamerged.forEach((d, idx) => {
-  //           indexValue[d.id] = idx;
-  //         });
-  //         data.forEach((result, idx) => {
-  //           if (indexValue[result.id] === undefined) {
-  //             datamerged.push(result);
-  //           } else {
-  //             datamerged[indexValue[result.id]] = result;
-  //           }
-  //         });
-  //         setLastModifiedAdminWorkshop(undefined);
-  //         store
-  //           .setItem("adminworkshop", datamerged)
-  //           .then(() => {
-  //             store.getItem("adminworkshop").then((admineworkshop: any) => {
-  //               dispatch(
-  //                 setAdminWorkshop(
-  //                   admineworkshop
-  //                     ?.filter((i: any) => i.creator === dbuser?.organizationid)
-  //                     ?.filter((i: any) => !i?.deleted)
-  //                 )
-  //               );
-  //             });
-  //             const ts = Math.floor(
-  //               data?.[0]?.lastModified.seconds * 1000 +
-  //                 data?.[0].lastModified.nanoseconds / 1000000
-  //             );
-  //             // console.log("ts", ts);
-  //             // console.log(dayjs(ts).toISOString());
-  //             store.setItem("adminworkshop-lastmodified", ts).then(() => {
-  //               setLastModifiedAdminWorkshop(ts);
-  //             });
-  //           })
-  //           .catch(() => setUpdatingAdminWorkshop(false));
-  //       });
-
-  //       // setAdminCompetitionStorage(datamerged));
-  //     },
-  //     (e) => {
-  //       console.log(e, "q not worked", e.message, " Events");
-
-  //       toast.error("You may not have permission");
-  //     }
-  //   );
-  //   return unsubscribe;
-  // }, [lastModifiedAdminWorkshop, dbuser, updatingAdminWorkshop, organization]);
-
   useEffect(() => {
     if (draftStorage !== undefined) {
       // just get the last modified
@@ -400,113 +225,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
       return;
     }
   }, [dispatch, draftStorage]);
-
-  // useEffect(() => {
-  //   if (!dbuser?.organizationid) {
-  //     // console.log("No uid");
-  //     return;
-  //   }
-  //   // console.log(lastModifiedDraft, "last modified");
-  //   if (organization?.docID !== dbuser.organizationid) {
-  //     return;
-  //   }
-
-  //   if (dbuser?.role !== "ADMIN") {
-  //     dispatch(setAdminDraft(null));
-  //     return;
-  //   }
-  //   // console.log("listener", lastModifiedDraft);
-  //   const ref = collection(db, "draft");
-  //   const ts = lastModifiedDraft || 0;
-  //   // console.log("listener ts", ts);
-  //   const q = doc(ref, dbuser?.organizationid);
-  //   const unsubscribe = onSnapshot(
-  //     q,
-  //     (snapshot) => {
-  //       // store in local storage the last timestamp
-  //       // merge results
-
-  //       if (!dbuser?.organizationid) {
-  //         return;
-  //       }
-
-  //       if (!snapshot.exists()) {
-  //         setDraftStorage({
-  //           creator: dbuser?.organizationid as string,
-  //           id: dbuser?.organizationid as string,
-  //           docID: dbuser?.organizationid as string,
-  //           title: "",
-  //           description: "",
-  //           startDate: 0,
-  //           endDate: 0,
-  //           capacity: 0,
-
-  //           createdAt: "",
-  //           updatedAt: "",
-  //           isFree: true,
-  //           registeredStudents: [],
-  //           attendance: {
-  //             attended: 0,
-  //             total: 0,
-  //           },
-
-  //           deleted: false,
-  //           organization: "",
-  //           organization_name: "",
-  //           organization_photo: "",
-  //           organization_address: "",
-  //           organization_phone: "",
-  //           timestamp: 0,
-
-  //           lastModified: { seconds: 0, nanoseconds: 0 },
-  //           location: "",
-  //           workshopImage: [],
-  //           registeredCount: 0,
-  //           status: "upcoming",
-  //           speaker: {
-  //             docID: "",
-  //             name: "",
-  //             bio: "",
-  //             email: "",
-  //             status: "active",
-  //             profileImage: "",
-  //             createdAt: "",
-  //             organizationId: "",
-  //           },
-  //           category: "",
-  //           level: "",
-  //           sendNotifications: false,
-  //           requireApproval: false,
-  //           enableWaitlist: false,
-  //           waitlistCount: 0,
-  //           waitlist: [],
-  //           registrationCloses: "",
-  //           additionalInformation: "",
-  //         });
-  //         return;
-  //       }
-  //       let data = { ...snapshot.data() } as WorkshopComponentProps;
-  //       // console.log(data, "snapshot data");
-  //       if (data === null || data === undefined) {
-  //         return;
-  //       }
-  //       // console.log("d", data, "query worked draft");
-
-  //       const ts = data?.timestamp;
-  //       // console.log("ts", ts);
-  //       // console.log(dayjs(ts).toISOString());
-  //       setLastModifiedDraft(ts);
-
-  //       // no merging required, just replacement on timestamp change. This will only cost one read per change. It would not use the cache.
-  //       setDraftStorage(data);
-  //     },
-  //     (e) => {
-  //       console.log(e, "q not worked", e.message, "draft");
-  //       toast.error("You may not have permission");
-  //     }
-  //   );
-  //   return unsubscribe;
-  // }, [dbuser, organization]);
 
   useEffect(() => {
     if (!dbuser) {
@@ -551,25 +269,20 @@ const Layout = ({ children }: { children: ReactNode }) => {
     return unsubscribe;
   }, [dbuser]);
 
-  const [updatingSpeakers, setUpdatingSpeakers] = useState(true);
-  const [lastModifiedSpeakers, setLastModifiedSpeakers] = useState<
-    number | undefined
-  >(undefined);
-
   // Fetch speakers data
   useEffect(() => {
     if (!dbuser?.organizationid || !organization?.docID) {
       return;
     }
 
-    try {
-      // Fetch speakers for this organization
-      const speakersQuery = query(
-        collection(db, "speakers"),
-        where("organizationId", "==", organization.docID)
-      );
+    const speakersQuery = query(
+      collection(db, "speakers"),
+      where("organization", "==", organization.docID) // correct query
+    );
 
-      const unsubscribe = onSnapshot(speakersQuery, (snapshot) => {
+    const unsubscribe = onSnapshot(
+      speakersQuery,
+      (snapshot) => {
         const speakersData = snapshot.docs.map((doc) => {
           const data = doc.data();
           return {
@@ -579,37 +292,20 @@ const Layout = ({ children }: { children: ReactNode }) => {
             email: data.email || "",
             createdAt: data.createdAt || "",
             status: data.status || "active",
-            organizationId: data.organizationId || "",
+            organization: data.organization || "",
+            organizationId: data.organization || "",
             lastModifiedSpeakers: data.lastModified || undefined,
           };
         });
 
         // Store speakers in Redux and local storage
         dispatch(setAdminSpeakers(speakersData as Speaker[]));
-        store.setItem("speakers", speakersData);
-
-        // Update last modified timestamp
-        if (speakersData.length > 0) {
-          const latestModified = Math.max(
-            ...speakersData.map((speaker) =>
-              speaker.lastModifiedSpeakers
-                ? speaker.lastModifiedSpeakers.seconds * 1000 +
-                  speaker.lastModifiedSpeakers.nanoseconds / 1000000
-                : 0
-            )
-          );
-          setLastModifiedSpeakers(latestModified);
-          store.setItem("speakers-lastmodified", latestModified);
-        }
-
-        setUpdatingSpeakers(false);
-      });
-
-      return unsubscribe;
-    } catch (error) {
-      console.error("Error fetching speakers data:", error);
-      setUpdatingSpeakers(false);
-    }
+      },
+      (error) => {
+        console.error("Error fetching speakers data:", error);
+      }
+    );
+    return unsubscribe;
   }, [dbuser, organization, dispatch]);
 
   useEffect(() => {
@@ -682,6 +378,153 @@ const Layout = ({ children }: { children: ReactNode }) => {
     );
     return unsubscribe;
   }, [user, organization]);
+
+  // Fetch registrations and students data
+  useEffect(() => {
+    if (!dbuser?.organizationid || workshops === undefined) {
+      return;
+    }
+
+    // Fetch registrations for this organization's workshops
+
+    const workshopIds = workshops?.map((doc) => doc.docID);
+
+    if (workshopIds?.length === 0) {
+      return;
+    }
+
+    console.log("workshopIds", workshopIds);
+
+    // Fetch all registrations for those workshops
+    const registrationsQuery = query(
+      collection(db, "registrations"),
+      where("workshopId", "in", workshopIds)
+    );
+    const unsubscribe = onSnapshot(
+      registrationsQuery,
+      (registrationsSnapshot) => {
+        const regs = registrationsSnapshot.docs.map(
+          (doc) =>
+            ({
+              docID: doc.id,
+              ...doc.data(),
+            } as Registration)
+        );
+
+        // Get unique student IDs from the registrations, filtering out guest/undefined IDs
+
+        // Add a convertTimestamp helper
+        const convertTimestamp = (timestamp: any): number => {
+          if (!timestamp) return 0;
+
+          // Convert Firestore timestamp to milliseconds
+          if (
+            timestamp?.seconds !== undefined &&
+            timestamp?.nanoseconds !== undefined
+          ) {
+            return timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000;
+          }
+
+          // Convert string to number if it's a date string
+          if (typeof timestamp === "string") {
+            const parsedDate = Date.parse(timestamp);
+            return isNaN(parsedDate) ? 0 : parsedDate;
+          }
+
+          // Return as number
+          return Number(timestamp) || 0;
+        };
+
+        // Enrich registrations with student and workshop data
+        const enrichedRegistrations = regs.map((reg) => {
+          // Handle both registered users and guest registrations
+          let studentInfo;
+
+          // If no student info found (or it's a guest), use the embedded student info
+          if (reg.student) {
+            studentInfo = {
+              id: reg.studentId,
+              name: reg.student.name,
+              email: reg.student.email,
+              profileImage: reg.student.profileImage || undefined,
+            };
+          } else {
+            studentInfo = {
+              id: reg.studentId,
+              name:  "Guest",
+              email: "",
+              profileImage: undefined,
+            }
+          }
+
+          const workshop = workshops?.find((w) => w.docID === reg.workshopId);
+
+          // Convert any timestamps to serializable format
+          return {
+            ...reg,
+            registeredAt: reg.registeredAt,
+            timestamp: reg.timestamp,
+            student: studentInfo,
+            workshop: workshop
+              ? {
+                  title: workshop.title,
+                  startDate: convertTimestamp(workshop.startDate),
+                  endDate: convertTimestamp(workshop.endDate),
+                }
+              : undefined,
+          };
+        });
+
+        // Store registrations in Redux
+        dispatch(setAdminRegistrations(enrichedRegistrations));
+      },
+      (error) => {
+        console.error("Error fetching registrations data:", error);
+        toast.error("Failed to load registrations");
+        dispatch(setAdminRegistrations(null));
+      }
+    );
+    return unsubscribe;
+  }, [workshops]);
+
+  useEffect(() => {
+    if (!registrations) return;
+    const studentIds = registrations
+      .map((reg) => reg.studentId)
+      .filter(
+        (id) => id !== undefined && id !== null && !id.startsWith("guest-")
+      )
+      .filter((id, index, arr) => arr.indexOf(id) === index);
+    if (studentIds.length === 0) {
+      dispatch(setAdminStudents([]));
+      return;
+    }
+    const unsubscribe = onSnapshot(
+      query(collection(db, "dbuser"), where("uid", "in", studentIds)),
+      (snapshot) => {
+        const studentsData: Student[] = snapshot.docs.map((doc) => {
+          const data = doc.data() as DBUSER;
+          return {
+            docID: doc.id,
+            uid: data.uid,
+            name: data.displayName,
+            email: data.email,
+            createdAt: dayjs().valueOf(),
+            profileImage: "",
+          };
+        });
+        dispatch(setAdminStudents(studentsData));
+      },
+      (error) => {
+        console.error("Error fetching students data:", error);
+        toast.error("Failed to load students");
+        setAdminStudents(null);
+      }
+    );
+    return unsubscribe;
+    // Only fetch student data if there are valid student IDs
+    
+  }, [registrations]);
 
   return (
     <Protected>
