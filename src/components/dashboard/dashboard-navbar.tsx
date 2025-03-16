@@ -31,12 +31,10 @@ import { Context } from "@/lib/userContext";
 import { Badge } from "@/components/ui/badge";
 import { signOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
-import {
-  getUnreadNotifications,
-  FirebaseNotification,
-} from "@/lib/firebase/notifications";
+
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { useAppSelector } from "@/redux/store";
 
 // Initialize dayjs plugins
 dayjs.extend(relativeTime);
@@ -53,9 +51,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   const { user } = useContext(Context);
   const router = useRouter();
   const [searchFocused, setSearchFocused] = useState(false);
-  const [notifications, setNotifications] = useState<FirebaseNotification[]>(
-    []
-  );
+  const notifications = useAppSelector((state) => state.NotificationReducer.value);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
   // Get user initials for avatar fallback
@@ -77,29 +73,6 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       console.error("Error signing out:", error);
     }
   };
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      if (!user?.uid) return;
-
-      setIsLoadingNotifications(true);
-      try {
-        const unreadNotifications = await getUnreadNotifications(user.uid, 5);
-        setNotifications(unreadNotifications);
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
-      } finally {
-        setIsLoadingNotifications(false);
-      }
-    };
-
-    fetchNotifications();
-
-    // Set up a polling mechanism to check for new notifications
-    const intervalId = setInterval(fetchNotifications, 60000); // Check every minute
-
-    return () => clearInterval(intervalId);
-  }, [user?.uid]);
 
   return (
     <header className="border-b bg-background sticky top-0 z-30">
@@ -150,9 +123,9 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
                 className="rounded-full relative"
               >
                 <Bell className="h-5 w-5" />
-                {notifications.length > 0 && (
+                {notifications?.filter(i=>!i.viewed[user.uid])?.length!==undefined && notifications.filter(i=>!i.viewed[user.uid])?.length > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0">
-                    {notifications.length > 9 ? "9+" : notifications.length}
+                    {notifications.filter(i=>!i.viewed[user.uid]).length > 9 ? "9+" : notifications.filter(i=>!i.viewed[user.uid]).length}
                   </Badge>
                 )}
               </Button>
@@ -160,8 +133,8 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
             <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel className="flex justify-between items-center">
                 <span>Notifications</span>
-                {notifications.length > 0 && (
-                  <Badge variant="outline">{notifications.length} new</Badge>
+                {notifications && notifications.length > 0 && (
+                  <Badge variant="outline">{notifications.filter(i=>!i.viewed[user.uid]).length} new</Badge>
                 )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -170,7 +143,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     Loading notifications...
                   </div>
-                ) : notifications.length > 0 ? (
+                ) : notifications && notifications.length > 0 ? (
                   notifications.map((notification) => (
                     <DropdownMenuItem
                       key={notification.id}
@@ -188,7 +161,7 @@ const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
                             {notification.message}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {dayjs(notification.createdAt?.toDate()).fromNow()}
+                            {dayjs(notification.createdAt).fromNow()}
                           </p>
                         </div>
                       </Link>

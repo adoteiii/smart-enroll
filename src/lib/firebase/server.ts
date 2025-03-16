@@ -71,7 +71,7 @@ export async function getOrganization(uid: string) {
 }
 
 export async function getDBUserFromServer(uid: string) {
-  const user = await db.collection("users").doc(uid).get();
+  const user = await db.collection("dbuser").doc(uid).get();
   console.log("user", user);
   if (!user.exists) {
     return null;
@@ -81,7 +81,7 @@ export async function getDBUserFromServer(uid: string) {
 
 export async function getDBUserFromServerEmail(email: string) {
   const user = await db
-    .collection("users")
+    .collection("dbuser")
     .where("email", "==", email.trim())
     .get();
   console.log(user.empty, user.docs);

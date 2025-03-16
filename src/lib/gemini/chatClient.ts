@@ -52,9 +52,9 @@ export async function generateAIResponse(
 
     // Send the request to Gemini
     const result = await model.generateContent([systemPrompt, userPrompt]);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
-
+    console.log('server queried prompt with', message, 'and sent response: ', text)
     return text;
   } catch (error) {
     console.error("Error generating AI response:", error);

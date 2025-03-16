@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useContext, useState } from "react";
 import Link from "next/link";
 import {
   Circle,
@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { FirebaseNotification } from "@/lib/firebase/notifications";
+import { FirebaseNotification } from "@/lib/componentprops";
+import { Context } from "@/lib/userContext";
 
 // Initialize dayjs plugins
 dayjs.extend(relativeTime);
@@ -31,7 +32,9 @@ export function NotificationItem({
   onAction,
 }: NotificationItemProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const {user} = useContext(Context)
 
+  
   const getIcon = () => {
     switch (notification.type) {
       case "new-registration":
@@ -67,20 +70,22 @@ export function NotificationItem({
   const getRelativeTime = () => {
     if (!notification.createdAt) return "";
 
-    const date = notification.createdAt.toDate();
+    const date = notification.createdAt;
     return dayjs(date).fromNow();
   };
-
+  if (!user?.uid) return null;
   return (
     <div
       className={`flex items-start space-x-4 p-4 rounded-md transition-colors hover:bg-muted/50 relative ${
-        !notification.read ? "bg-muted/30" : ""
+        !notification.viewed[user.uid] ? "bg-muted/30" : ""
       }`}
+
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      
       <div className="mt-1">
-        {!notification.read && (
+        {!notification.viewed[user.uid] && (
           <div className="absolute left-2 top-5 h-2 w-2 rounded-full bg-primary" />
         )}
         <div className="p-2 rounded-full bg-muted">{getIcon()}</div>
@@ -102,10 +107,11 @@ export function NotificationItem({
 
       <div
         className={`flex space-x-1 transition-opacity ${
-          isHovered || notification.read ? "opacity-100" : "opacity-0"
+          isHovered || notification.viewed[user.uid] ? "opacity-100" : "opacity-0"
         }`}
       >
-        {!notification.read && (
+        
+        {!notification.viewed[user.uid] && (
           <Button
             variant="ghost"
             size="icon"

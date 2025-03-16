@@ -134,6 +134,23 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface FirebaseNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  link?: string;
+  organizationId: string;
+  accessLevel?: string;
+  relatedId?: string; // Workshop ID, registration ID, etc.
+  createdAt: number;
+  viewed: {[uid: string]: boolean};
+  deleted: {[uid: string]: boolean};
+}
+
+
 export interface AIQuery {
   id: string;
   question: string;

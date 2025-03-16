@@ -32,16 +32,13 @@ import RegistrationForm from "@/components/workshops/RegistrationForm"
 import { Separator } from "@/components/ui/separator"
 
 export default function WorkshopDetailsPage() {
-  const { id } = useParams()
-  const router = useRouter()
-  const { user } = useContext(Context)
-
-  const [workshop, setWorkshop] = useState<WorkshopComponentProps | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [showRegistrationForm, setShowRegistrationForm] = useState(false)
+  const { id } = useParams();
+  const router = useRouter();
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
 
   // Get workshops from Redux for initial load
-  const reduxWorkshops = useAppSelector((state) => state.WorkshopReducer.value)
+  const reduxWorkshops = useAppSelector((state) => state.WorkshopReducer.value);
+  const workshop = reduxWorkshops?.find(w=>w.docID === id)
 
   // Helper function to get timestamp in milliseconds from various formats
   const getTimestamp = (date: any): number => {
@@ -58,47 +55,49 @@ export default function WorkshopDetailsPage() {
     return 0 // Default fallback
   }
 
-  // Fetch workshop data from Firestore
-  useEffect(() => {
-    if (!id) return
 
-    const fetchWorkshop = async () => {
-      setLoading(true)
-      // First try to get from Redux state
-      if (reduxWorkshops && reduxWorkshops.length > 0) {
-        const foundWorkshop = reduxWorkshops.find((w) => w.docID === id)
-        if (foundWorkshop) {
-          setWorkshop(foundWorkshop)
-          setLoading(false)
-          return
-        }
-      }
+  // // Fetch workshop data from Firestore
+  // useEffect(() => {
+  //   if (!id) return;
 
-      // If not found in Redux, fetch from Firestore
-      try {
-        const workshopDoc = await getDoc(doc(db, "workshops", id as string))
+  //   const fetchWorkshop = async () => {
+  //     setLoading(true);
+  //     // First try to get from Redux state
+  //     if (reduxWorkshops && reduxWorkshops.length > 0) {
+  //       const foundWorkshop = reduxWorkshops.find((w) => w.docID === id);
+  //       if (foundWorkshop) {
+  //         setWorkshop(foundWorkshop);
+  //         setLoading(false);
+  //         return;
+  //       }
+  //     }
 
-        if (workshopDoc.exists()) {
-          const workshopData = {
-            ...workshopDoc.data(),
-            docID: workshopDoc.id,
-          } as WorkshopComponentProps
+  //     // If not found in Redux, fetch from Firestore
+  //     try {
+  //       const workshopDoc = await getDoc(doc(db, "workshops", id as string));
 
-          setWorkshop(workshopData)
-        } else {
-          toast.error("Workshop not found")
-          router.push("/workshops")
-        }
-      } catch (error) {
-        console.error("Error fetching workshop:", error)
-        toast.error("Failed to load workshop details")
-      } finally {
-        setLoading(false)
-      }
-    }
+  //       if (workshopDoc.exists()) {
+  //         const workshopData = {
+  //           ...workshopDoc.data(),
+  //           docID: workshopDoc.id,
+  //         } as WorkshopComponentProps;
 
-    fetchWorkshop()
-  }, [id, reduxWorkshops, router])
+  //         setWorkshop(workshopData);
+  //       } else {
+  //         toast.error("Workshop not found");
+  //         router.push("/workshops");
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching workshop:", error);
+  //       toast.error("Failed to load workshop details");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchWorkshop();
+  // }, [id, reduxWorkshops, router]);
+
 
   // Check if workshop is full
   const isWorkshopFull = () => {
@@ -130,10 +129,13 @@ export default function WorkshopDetailsPage() {
   }
 
   // Handle successful registration
-  const handleRegistrationSuccess = (updatedWorkshop: WorkshopComponentProps) => {
-    setWorkshop(updatedWorkshop)
-    toast.success("Successfully registered for the workshop!")
-  }
+
+  const handleRegistrationSuccess = (
+    updatedWorkshop: WorkshopComponentProps
+  ) => {
+    // done // 
+    // nothing to update here //
+  };
 
   // Format workshop status
   const getStatusBadge = () => {
@@ -162,7 +164,7 @@ export default function WorkshopDetailsPage() {
   }
 
   // Render skeleton during loading
-  if (loading) {
+  if (reduxWorkshops===undefined) {
     return (
       <div className="container mx-auto py-12 px-4 max-w-7xl">
         <div className="mb-12">

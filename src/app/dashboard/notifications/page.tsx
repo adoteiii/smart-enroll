@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { useAppSelector } from "@/redux/store";
+import { AppDispatch, useAppSelector } from "@/redux/store";
 import {
   updateDoc,
   Timestamp,
@@ -36,16 +36,20 @@ import {
   where,
   getDocs,
   orderBy,
+  onSnapshot,
 } from "firebase/firestore";
 
 import {
-  FirebaseNotification,
   markNotificationAsRead,
   deleteNotification,
 } from "@/lib/firebase/notifications";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationItem } from "@/components/notifications/notification-item";
 import { db } from "@/lib/firebase/firebase";
+import { useDispatch } from "react-redux";
+import { setNotifications } from "@/redux/features/notificationSlice";
+import { FirebaseNotification } from "@/lib/componentprops";
+import Loader from "@/components/loader/Loader";
 
 // Notification types matching the ones in settings
 const NOTIFICATION_TYPES = {
@@ -58,66 +62,27 @@ const NOTIFICATION_TYPES = {
 
 export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState("all");
-  const [notifications, setNotifications] = useState<FirebaseNotification[]>(
-    []
+  const notifications = useAppSelector(
+    (state) => state.NotificationReducer.value
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-
   const user = useAppSelector((state) => state.DBUserReducer.value);
-
-  // Fetch notifications from Firestore
-  const fetchNotifications = async () => {
-    if (!user?.uid) return;
-
-    setIsLoading(true);
-
-    try {
-      const notificationsRef = collection(db, "notifications");
-      const q = query(
-        notificationsRef,
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-
-      const querySnapshot = await getDocs(q);
-      const notificationsData: FirebaseNotification[] = [];
-
-      querySnapshot.forEach((doc) => {
-        notificationsData.push({
-          id: doc.id,
-          ...doc.data(),
-        } as FirebaseNotification);
-      });
-
-      setNotifications(notificationsData);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Mark all as read
   const markAllAsRead = async () => {
     if (!user?.uid) return;
 
     try {
-      const unreadNotifications = notifications.filter((notif) => !notif.read);
-
+      const unreadNotifications = notifications?.filter(
+        (notif) => !notif.viewed[user.uid]
+      );
+      if (!unreadNotifications) return;
       // Update each unread notification
       for (const notif of unreadNotifications) {
-        await markNotificationAsRead(notif.id);
+        await markNotificationAsRead(notif.id, user.uid);
+        // auto updated
       }
-
-      // Update local state
-      setNotifications(
-        notifications.map((notif) => ({
-          ...notif,
-          read: true,
-        }))
-      );
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
     }
@@ -128,15 +93,14 @@ export default function NotificationsPage() {
     if (!user?.uid) return;
 
     try {
-      const readNotifications = notifications.filter((notif) => notif.read);
-
+      const readNotifications = notifications?.filter(
+        (notif) => notif.viewed[user.uid]
+      );
+      if (!readNotifications) return;
       // Delete each read notification
       for (const notif of readNotifications) {
-        await deleteNotification(notif.id);
+        await deleteNotification(notif.id, user.uid);
       }
-
-      // Update local state
-      setNotifications(notifications.filter((notif) => !notif.read));
     } catch (error) {
       console.error("Error clearing read notifications:", error);
     }
@@ -147,15 +111,12 @@ export default function NotificationsPage() {
     id: string,
     action: "read" | "delete"
   ) => {
+    if (!user?.uid) return;
     try {
       if (action === "read") {
-        await markNotificationAsRead(id);
-        setNotifications(
-          notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-        );
+        await markNotificationAsRead(id, user.uid);
       } else if (action === "delete") {
-        await deleteNotification(id);
-        setNotifications(notifications.filter((n) => n.id !== id));
+        await deleteNotification(id, user.uid);
       }
     } catch (error) {
       console.error(
@@ -169,9 +130,11 @@ export default function NotificationsPage() {
 
   // Filter notifications based on tab, search and type filters
   const getFilteredNotifications = () => {
-    return notifications.filter((notification) => {
+    if (!user?.uid) return [];
+    return notifications?.filter((notification) => {
       // Filter by tab
-      if (activeTab === "unread" && notification.read) return false;
+      if (activeTab === "unread" && notification.viewed?.[user?.uid])
+        return false;
 
       // Filter by search query
       if (
@@ -194,15 +157,22 @@ export default function NotificationsPage() {
     });
   };
 
-  // Initial fetch
-  useEffect(() => {
-    if (user?.uid) {
-      fetchNotifications();
-    }
-  }, [user?.uid]);
-
+  if (notifications === null) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold">
+            Could not fetch notifications
+          </h3>
+          <p className="text-muted-foreground">Please try again later</p>
+        </div>
+      </div>
+    );
+  }
   const filteredNotifications = getFilteredNotifications();
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications?.filter(
+    (n) => !n.viewed[user?.uid!]
+  ).length;
 
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-5xl">
@@ -223,10 +193,10 @@ export default function NotificationsPage() {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="unread">
-              Unread
-              {unreadCount > 0 && (
+              Unread{" "}
+              {unreadCount && unreadCount > 0 && (
                 <Badge variant="secondary" className="ml-2">
-                  {unreadCount}
+                  {`(${unreadCount})`}
                 </Badge>
               )}
             </TabsTrigger>
@@ -359,14 +329,14 @@ export default function NotificationsPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
+          {/* <Button
             variant="outline"
             size="icon"
             onClick={fetchNotifications}
             title="Refresh notifications"
           >
             <RefreshCcw className="h-4 w-4" />
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -384,7 +354,9 @@ export default function NotificationsPage() {
           variant="outline"
           size="sm"
           onClick={clearReadNotifications}
-          disabled={notifications.filter((n) => n.read).length === 0}
+          disabled={
+            notifications?.filter((n) => n.viewed[user?.uid!]).length === 0
+          }
         >
           <X className="mr-2 h-4 w-4" />
           Clear read notifications
@@ -397,18 +369,19 @@ export default function NotificationsPage() {
             {activeTab === "all" ? "All Notifications" : "Unread Notifications"}
           </CardTitle>
           <CardDescription>
-            {filteredNotifications.length}{" "}
+            {filteredNotifications?.length}{" "}
             {activeTab === "all" ? "total" : "unread"} notifications
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
-            {isLoading ? (
+            {notifications === undefined ? (
               // Loading skeletons
               Array(5)
                 .fill(null)
                 .map((_, i) => (
                   <div key={i} className="flex items-start space-x-4 py-4">
+                  
                     <Skeleton className="h-12 w-12 rounded-full" />
                     <div className="space-y-2 flex-1">
                       <Skeleton className="h-4 w-[250px]" />
@@ -417,7 +390,7 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                 ))
-            ) : filteredNotifications.length > 0 ? (
+            ) : filteredNotifications && filteredNotifications.length > 0 ? (
               filteredNotifications.map((notification) => (
                 <NotificationItem
                   key={notification.id}
