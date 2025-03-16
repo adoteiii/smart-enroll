@@ -442,6 +442,17 @@ export const createRegistrationNotification = async (
             `
                 : ""
             }
+             ${
+              workshopDetails.venueLink
+                ? `
+            <tr>
+              <td style="padding: 8px 0; color: #666; font-weight: bold;">Venue Location Link:</td>
+              <td style="padding: 8px 0; color: #666;">${workshopDetails.venueLink}</td>
+
+            </tr>
+            `
+                : ""
+            }
             ${
               workshopDetails.level
                 ? `
