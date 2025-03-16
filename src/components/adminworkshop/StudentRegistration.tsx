@@ -53,6 +53,8 @@ import {
 } from "@/lib/componentprops";
 import { toast } from "sonner";
 import { FormAssistant } from "@/components/ai/FormAssistant";
+import AIFieldGenerator from "@/components/adminworkshop/AIFieldGenerator";
+import { Separator } from "../ui/separator";
 
 interface StudentRegistrationProps {
   workshop: Partial<WorkshopComponentProps>;
@@ -576,18 +578,22 @@ export default function StudentRegistration({
             </div>
           )}
 
-          <FormAssistant
-            formFields={customFields}
-            onAddField={addSuggestedField} // Changed from handleAddField to addSuggestedField
-            workshopData={{
-              title: workshop.title,
-              description: workshop.description,
-              category: workshop.category,
-              level: workshop.level,
-              isFree: workshop.isFree,
-              capacity: workshop.capacity,
-            }}
-          />
+          {/* Replace the FormAssistant component with our new AIFieldGenerator */}
+          <div className="mt-8">
+            <Separator className="my-6" />
+            <AIFieldGenerator
+              formFields={customFields}
+              onAddField={addSuggestedField}
+              workshopData={{
+                title: workshop.title,
+                description: workshop.description,
+                category: workshop.category,
+                level: workshop.level,
+                isFree: workshop.isFree,
+                capacity: workshop.capacity,
+              }}
+            />
+          </div>
         </div>
 
         {/* Preview section */}

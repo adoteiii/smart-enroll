@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import Link from "next/link";
 import {
   BarChart3,
@@ -40,15 +40,32 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useContext } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { Context } from "@/lib/userContext";
+import Image from "next/image";
 
 export default function AppSidebar() {
-  const {user} = useContext(Context)
+  const { user } = useContext(Context);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+
   return (
-    <Sidebar variant="sidebar" collapsible="icon">
-      <SidebarHeader className="flex items-center justify-between px-4 py-2">
+    <Sidebar variant="sidebar" collapsible="icon" ref={sidebarRef}>
+      <SidebarHeader className="flex items-center justify-between px-4 py-2 mt-4">
+        <Link href="/" className="w-full overflow-hidden">
+          
+            <Image
+              src="/icon.svg"
+              alt="Logo"
+              width={100}
+              height={100}
+              priority
+              className="h-8 w-8 mx-auto"
+            />
        
+     
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -79,11 +96,7 @@ export default function AppSidebar() {
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                   <SidebarMenuSubItem>
-                    {/* <SidebarMenuSubButton asChild>
-                      <Link href="/dashboard/workshops/manage">
-                        <span>Manage Workshops</span>
-                      </Link>
-                    </SidebarMenuSubButton> */}
+                    {/* Commented out item preserved */}
                   </SidebarMenuSubItem>
                 </SidebarMenuSub>
               </SidebarMenuItem>
@@ -136,15 +149,17 @@ export default function AppSidebar() {
           <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent p-3">
             <Avatar>
               <AvatarImage
-                src={user.photoURL||"/placeholder.svg?height=24&width=24"}
+                src={user?.photoURL || "/placeholder.svg?height=24&width=24"}
                 alt="Admin"
               />
               <AvatarFallback>AD</AvatarFallback>
             </Avatar>
             <div className="flex flex-col overflow-hidden">
-              <span className="truncate text-sm font-medium">{user.displayName||"Admin User"}</span>
+              <span className="truncate text-sm font-medium">
+                {user?.displayName || "Admin User"}
+              </span>
               <span className="truncate text-xs text-muted-foreground">
-                {user.email||""}
+                {user?.email || ""}
               </span>
             </div>
           </div>
