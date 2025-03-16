@@ -79,6 +79,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { FormField, WorkshopComponentProps } from "@/lib/componentprops";
+import { exportRegistrationsToCSV } from "@/lib/utils/csvExport";
 
 export default function RegistrationsPage() {
   const dispatch = useAppDispatch();
@@ -191,7 +192,7 @@ export default function RegistrationsPage() {
           }
 
           // Convert string to number if it's a date string
-          if (typeof timestamp === 'string') {
+          if (typeof timestamp === "string") {
             const parsedDate = Date.parse(timestamp);
             return isNaN(parsedDate) ? 0 : parsedDate;
           }
@@ -314,10 +315,23 @@ export default function RegistrationsPage() {
     }
   };
 
-  // Format registration date
-  const formatDate = (dateString: string) => {
+  // Update your formatDate function to handle different date formats
+  const formatDate = (date: any, formatStr = "MMM d, yyyy") => {
+    if (!date) return "No date";
+
     try {
-      return format(new Date(dateString), "MMM d, yyyy");
+      // Handle Firebase timestamp objects
+      if (date && typeof date === "object" && date.seconds) {
+        return format(new Date(date.seconds * 1000), formatStr);
+      }
+
+      // Handle numeric timestamps
+      if (typeof date === "number") {
+        return format(new Date(date), formatStr);
+      }
+
+      // Handle ISO strings and other date formats
+      return format(new Date(date), formatStr);
     } catch {
       return "Invalid date";
     }
@@ -435,48 +449,9 @@ export default function RegistrationsPage() {
         </div>
         <Button
           className="gap-2"
-          onClick={() => {
-            // Export CSV functionality
-            const headers = [
-              "Name",
-              "Email",
-              "Workshop",
-              "Date",
-              "Registered On",
-              "Status",
-            ];
-
-            const csvContent = [
-              headers.join(","),
-              ...filteredRegistrations.map((reg) =>
-                [
-                  reg.student?.name || "Unknown",
-                  reg.student?.email || "No email",
-                  reg.workshop?.title || "Unknown workshop",
-                  reg.workshop?.startDate
-                    ? reg.workshop.startDate
-                    : "No date",
-                  reg.registeredAt ? reg.registeredAt : "Unknown",
-                  reg.status,
-                ].join(",")
-              ),
-            ].join("\n");
-
-            const blob = new Blob([csvContent], {
-              type: "text/csv;charset=utf-8;",
-            });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute(
-              "download",
-              `registrations_${new Date().toISOString().split("T")[0]}.csv`
-            );
-            link.style.visibility = "hidden";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }}
+          onClick={() =>
+            exportRegistrationsToCSV(filteredRegistrations, workshops)
+          }
         >
           <Download className="h-4 w-4" /> Export Data
         </Button>
@@ -542,14 +517,17 @@ export default function RegistrationsPage() {
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>
                           {registration.workshop?.startDate
-                            ? registration.workshop.startDate
+                            ? formatDate(registration.workshop.startDate)
                             : "No date"}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
                       {registration.registeredAt
-                        ? registration.registeredAt
+                        ? formatDate(
+                            registration.registeredAt,
+                            "MMM d, yyyy h:mm a"
+                          )
                         : "Unknown"}
                     </TableCell>
                     <TableCell>
