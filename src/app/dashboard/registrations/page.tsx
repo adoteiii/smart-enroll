@@ -65,9 +65,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { setAdminStudents } from "@/redux/features/admin/studentsSlice";
-import {
-  setAdminRegistrations,
-} from "@/redux/features/admin/registrationSlice";
+import { setAdminRegistrations } from "@/redux/features/admin/registrationSlice";
 
 import Link from "next/link";
 import Loader from "@/components/loader/Loader";
@@ -361,7 +359,7 @@ export default function RegistrationsPage() {
   };
 
   // Handle loading state
-  if (registrations===undefined) {
+  if (registrations === undefined) {
     return <Loader />;
   }
 
@@ -953,7 +951,7 @@ export default function RegistrationsPage() {
                       <p className="text-xs text-muted-foreground">Waitlist</p>
                     </div>
                   </div>
-                  <div className="mt-4 h-[100px]">
+                  <div className="mt-4 h-[180px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <RePieChart>
                         <Pie
@@ -984,23 +982,41 @@ export default function RegistrationsPage() {
                             },
                           ]}
                           cx="50%"
-                          cy="50%"
-                          innerRadius={30}
-                          outerRadius={50}
+                          cy="45%" // Shifted slightly up to make room for legend
+                          innerRadius={35}
+                          outerRadius={65} // Increased radius for better visibility
                           fill="#8884d8"
-                          paddingAngle={1}
+                          paddingAngle={2}
                           dataKey="value"
                         >
-                          <Cell fill="var(--primary)" />
-                          <Cell fill="var(--muted)" />
-                          <Cell fill="var(--secondary)" />
-                          <Cell fill="var(--destructive)" />
+                          {/* Vibrant status colors */}
+                          <Cell key="confirmed" fill="#10b981" />{" "}
+                          {/* Green for confirmed */}
+                          <Cell key="pending" fill="#f59e0b" />{" "}
+                          {/* Amber for pending */}
+                          <Cell key="waitlist" fill="#3b82f6" />{" "}
+                          {/* Blue for waitlist */}
+                          <Cell key="cancelled" fill="#ef4444" />{" "}
+                          {/* Red for cancelled */}
+                          {/* Improved tooltip */}
+                          <Tooltip
+                            formatter={(value) => [
+                              `${value} registrations`,
+                              "",
+                            ]}
+                            contentStyle={{ fontSize: 12, borderRadius: "4px" }}
+                          />
                         </Pie>
                         <Legend
                           layout="horizontal"
                           verticalAlign="bottom"
                           align="center"
-                          wrapperStyle={{ fontSize: 10 }}
+                          wrapperStyle={{ fontSize: 10, marginTop: 10 }}
+                          formatter={(value) => (
+                            <span style={{ color: "#666", fontWeight: 500 }}>
+                              {value}
+                            </span>
+                          )}
                         />
                       </RePieChart>
                     </ResponsiveContainer>

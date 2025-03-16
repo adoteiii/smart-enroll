@@ -4,6 +4,14 @@
 
 **SmartEnroll** is an AI-powered workshop registration and management platform designed for educational institutions and event organizers. It streamlines the registration process, enhances engagement, and provides powerful analytics for event management.
 
+## Video Demo  
+
+[Watch the Demo](https://drive.google.com/file/d/1RxDViqDYt65mdcNTSBKQKlXz-HGZxCzB/view?usp=drive_link)  
+
+## Live Site  
+
+[Smart Enroll](https://smart-enroll.web.app/)  
+
 ## 🚀 Features
 
 - **AI-Powered Registration Management** – Intelligent form processing, duplicate detection, and suggestion engine.
@@ -99,6 +107,7 @@
 ### 🎛 Admin Dashboard
 
 The admin dashboard is accessible at `/dashboard`, where admins can:
+
 - Create and manage workshops.
 - View registrations.
 - Send notifications.
